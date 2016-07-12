@@ -1,0 +1,114 @@
+#!/usr/bin/env python
+
+'''
+
+    This file is part of Dave's Stupid Network Game Library.
+
+    Dave's Stupid Network Game Library is free software; you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation; either version 2 of the License, or
+    (at your option) any later version.
+
+    Dave's Stupid Network Game Library is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Dave's Stupid Network Game Library; if not, write to the Free Software
+    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  00111-1307  USA
+
+    Dave's Stupid Network Game Library is copyright 2016 by Dave Fancella
+
+'''
+
+import sys, exceptions
+from time import sleep
+
+import readline
+
+from libdavenetgame import server
+ 
+HOST = ''   # Symbolic name meaning all available interfaces
+PORT = 8888 # Arbitrary non-privileged port
+ 
+theServer = server.nServer()
+theServer.ListenOn(HOST, PORT)
+
+theServer.Start()
+
+print "Starting test server."
+
+## Help text for commands.
+commands = {
+    'show' : { 'usage' : "Usage: show (connections)",
+              'desc'  : "Show whatever you want to see." },
+    'help' : { 'usage' : "help [command]",
+              'desc'  : "Print this helpful text.  Alternately, type in a command to see its helpful text." },
+    'quit' : { 'usage' : "quit",
+              'desc'  : "Quit the test client." },
+}
+
+def Help(command=None):
+    global commands
+    
+    if command is not None:
+        if commands.has_key(command):
+            print "%10s : %s" % (command, commands[command]["desc"])
+            print "%13s %s" % (" ", commands[command]['usage'])
+            print
+        else:
+            print "Command not found."
+    else:
+        for key, value in commands.iteritems():
+            print "%10s : %s" % (key, value["desc"] )
+            print "%13s %s" % (" ", value['usage'] )
+            print
+
+keepGoing = True
+
+try:
+    while(keepGoing) :
+        msg = raw_input('')
+        
+        args = msg.split(" ")
+        
+        command = args.pop(0)
+        
+        command = command.lower()
+        
+        # Ignore simple presses of enter
+        if command == '':
+            continue
+        
+        if command == "show":
+            if len(args) != 1:
+                print "Usage: show (connections)"
+            else:
+                if args[0] == "connections":
+                    for a in theServer.GetConnectionList():
+                        print "%3s: %40s" % (a.id(), str(a) )
+                else:
+                    print "Unknown thing to show: " + args[0]
+        elif command == "quit":
+            pass
+            #if theClient is not None:
+            #    theClient.Logout()
+            #    theClient.Stop(True)
+            #    theClient = None
+            keepGoing = False
+        elif command == "help":
+            if len(args) < 1:
+                Help()
+            else:
+                Help(args[0])
+        else:
+            print "Command not recognized."
+        
+except exceptions.KeyboardInterrupt:
+    print "Quitting due to keyboard interrupt"
+
+theServer.Stop(True)
+print
+
+
