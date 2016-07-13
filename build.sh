@@ -24,13 +24,24 @@
 
 echo "Building Dave's Stupid Network Game Library"
 echo
-echo "Building protocol files"
 
-cd ./libdavenetgame/messages
-pwd
+case $1 in
+    "clean")
+        echo "Deleting protobuf generated files..."
+        find ./libdavenetgame -name "*_pb2.py" -print0 | xargs -0 rm -rf
+        echo "Deleting python byte-compiled files..."
+        find ./libdavenetgame -name "*.pyc" -print0 | xargs -0 rm -rf
+        ;;
+    "build")
+        cd ./libdavenetgame/messages
+        pwd
+        echo "Building protocol files"
+        for a in *.proto
+        do
+            echo "Building $a"
+            protoc -I=./ --python_out=./ ./$a
+        done
+        ;;
+esac
 
-for a in *.proto
-do
-    echo "Building $a"
-    protoc -I=./ --python_out=./ ./$a
-done
+
