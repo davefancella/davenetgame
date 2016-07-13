@@ -42,6 +42,8 @@ case $1 in
             protoc -I=./ --python_out=./ ./$a
         done
         ;;
+    *)
+        echo "Usage: $0 build|clean"
 esac
 
 
