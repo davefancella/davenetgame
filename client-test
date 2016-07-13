@@ -54,6 +54,9 @@ commands = {
     'ping' : { 'usage' : "ping",
                'desc'  : "Ping the server to which you are connected.  You must be connected for this to work."
               },
+    'logout' : { 'usage' : "logout",
+               'desc'  : "Log out from the server.  You must be connected for this to work."
+              },
     'help' : { 'usage' : "help [command]",
               'desc'  : "Print this helpful text.  Alternately, type in a command to see its helpful text." },
     'quit' : { 'usage' : "quit",

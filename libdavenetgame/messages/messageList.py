@@ -36,13 +36,11 @@ M_LOGIN_S = 'login'
 M_LOGOUT = 2
 M_LOGOUT_S = 'logout'
 
-M_LOGIN_ACK = 5
-M_LOGIN_ACK_S = 'login_ack'
+M_ACK = 3
+M_ACK_S = 'ack'
 
-M_PING = 3
+M_PING = 4
 M_PING_S = 'ping'
-M_PINGACK = 4
-M_PINGACK_S = 'pingack'
 
 ## Returns a new message id.  This is used internally, do not use it externally.
 __msgId = 0
@@ -69,14 +67,15 @@ ml[M_LOGIN] = login_pb2.Login
 ml[M_LOGIN_S] = M_LOGIN
 ml[M_LOGOUT] = login_pb2.Logout
 ml[M_LOGOUT_S] = M_LOGOUT
-ml[M_LOGIN_ACK] = login_pb2.LoginAck
-ml[M_LOGIN_ACK_S] = M_LOGIN_ACK
+
+## Ack message
+import ack_pb2
+ml[M_ACK] = ack_pb2.Ack
+ml[M_ACK_S] = M_ACK
 
 ## Ping messages
 import ping_pb2
 ml[M_PING] = ping_pb2.Ping
 ml[M_PING_S] = M_PING
-ml[M_PINGACK] = ping_pb2.PingAck
-ml[M_PINGACK_S] = M_PINGACK
 
 

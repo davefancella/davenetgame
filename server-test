@@ -86,8 +86,11 @@ try:
                 print "Usage: show (connections)"
             else:
                 if args[0] == "connections":
-                    for a in theServer.GetConnectionList():
-                        print "%3s: %40s" % (a.id(), str(a) )
+                    if len(theServer.GetConnectionList() ) == 0:
+                        print "There are no connections at this time."
+                    else:
+                        for a in theServer.GetConnectionList():
+                            print "%3s: %40s" % (a.id(), str(a) )
                 else:
                     print "Unknown thing to show: " + args[0]
         elif command == "quit":

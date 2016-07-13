@@ -16,11 +16,12 @@
 //
 //    Dave's Stupid Network Game Library is copyright 2016 by Dave Fancella
 
-// A Ping.  Fill in msg if you want, but obviously not necessary.
-message Ping {
+// A general purpose ack.  This can acknowledge multiple packets, regardless of type, using the replied field.
+// The replied field should always contain at least one id for a packet being acked.
+message Ack {
     required fixed32 id = 1;
     required fixed32 mtype = 2;
     required double timestamp = 3;
-    optional string msg = 4;
+    repeated uint32 replied = 4;
 }
 

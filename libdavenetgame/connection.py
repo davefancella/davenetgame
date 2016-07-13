@@ -75,6 +75,10 @@ class nConnection(object):
     
     ## Local copy of the pedia
     __pedia = None
+    
+    ## These are pings that are waiting to be answered.  About 60 seconds worth of pings are kept.
+    #  Only the ID is kept, because that's all that's sent by the ack packet.
+    __pings = None
 
     ## When you instantiate an nConnection, you must give it a host and port.  There's
     #  no such thing as a connection without one.
@@ -91,6 +95,8 @@ class nConnection(object):
         
         self.__pedia = pedia.getPedia()
         
+        self.__pings = []
+        
     ## The id for this connection
     def id(self):
         return self.__id
@@ -98,15 +104,37 @@ class nConnection(object):
     ## All of the logic for maintaining a connection is kept here, but the actual message sending isn't
     #  handled here.  The timestep parameter should be a timestamp from the server.
     def maintain(self, timestep):
-        pass
+        if (timestep - self.__lastping) > 0.98:
+            self.Ping(timestep)
+            
+            # This loop should only happen if there's either an extreme amount of packet loss, the client
+            # has disconnected, or the pings aren't being acked properly.  However, even if the client
+            # has disconnected, this loop still shouldn't run because the client times out after 30 seconds.
+            while len(self.__pings) > 65:
+                self.__pings.pop(0)
     
     ## Tell the connection to login, which at this time consists of sending a LoginAck to the connected
     #  client and starting connection maintenance.
-    def Login(self):
-        msg = self.__pedia.GetMessageType(mp.M_LOGIN_ACK)()
-        msg.mtype = mp.M_LOGIN_ACK
-        self.AddOutgoing(msg)
+    def Login(self, loginPacket):
+        msg = self.__pedia.GetMessageType(mp.M_ACK)()
+        msg.mtype = mp.M_ACK
+        msg.replied.append(loginPacket.id)
         
+        self.AddOutgoing(msg)
+    
+    ## Pings the other side
+    def Ping(self, timestep):
+        thePing = self.__pedia.GetMessageType(mp.M_PING)()
+        thePing.mtype = mp.M_PING
+        thePing.timestamp = timestep
+        
+        self.__lastping = timestep
+        
+        theId = self.AddOutgoing(thePing, timestep)
+        self.__pings.append(theId)
+        
+        print "Ping sent."
+    
     ## Checks if the connection has outgoing messages to send
     def HasOutgoing(self):
         if len(self.__outgoing) > 0:
@@ -118,11 +146,14 @@ class nConnection(object):
     #  The msg parameter should be the actual message that will be sent, e.g. the google buffer class.
     #  The id and timestamp will be assigned as it's added to the queue.  Once queued, the message is ready
     #  to send.
-    def AddOutgoing(self, msg):
+    def AddOutgoing(self, msg, timestep=None):
         msg.id = mp.get_id()
-        msg.timestamp = time.time()
+        if timestep is None:
+            msg.timestamp = time.time()
         
         self.__outgoing.append(msg)
+        
+        return msg.id
 
     ## Gets the next outgoing message.
     def NextOutgoing(self):
@@ -139,6 +170,10 @@ class nConnection(object):
     ## Returns the port for the connection.
     def port(self):
         return self.__port
+    
+    ## Returns the player for the connection
+    def player(self):
+        return self.__player
     
     def setPlayer(self, name):
         self.__player = name
@@ -180,10 +215,13 @@ class nConnectionList(object):
         
     ## Remove the connection listed
     def Remove(self, con):
+        aCon = None
+        
         for a in range(len(self.__connections) ):
             if self.__connections[a] == con:
-                del self.__connections[a]
+                aCon = self.__connections.pop(a)
                 break
+        del aCon
         
     def append(self, item):
         self.__connections.append(item)
@@ -200,7 +238,8 @@ class nConnectionList(object):
 
     ## Called by the server to maintain connections, send pings and so forth to see who's still connected.
     def maintain(self, timestep):
-        pass
+        for a in self.__connections:
+            a.maintain(timestep)
 
     ## Returns true if any connection has outgoing messages to send
     def HasOutgoing(self):

@@ -60,6 +60,9 @@ class nClient(threading.Thread):
     ## This is the last used message id
     __msgId = None
     
+    ## This is the lock that must be called to avoid thread collisions
+    __lock = None
+    
     def __init__(self, **args):
         threading.Thread.__init__(self, **args)
         
@@ -71,6 +74,8 @@ class nClient(threading.Thread):
         self.__outgoing = []
         
         self.__msgId = 0
+        
+        self.__lock = threading.RLock()
 
     def SetServer(self, host, port):
         self.__host = host
@@ -105,10 +110,11 @@ class nClient(threading.Thread):
 
     ## Stops the server.  It may still take a few seconds or so.  If blocking is "True", then the call will
     #  block until the server has shut down.
-    def Stop(self, blocking=False):
+    def Stop(self, blocking=True):
         self.__continue = False
     
         if blocking:
+            print "Waiting for client thread to stop"
             self.join()
 
     ## Call to simply send a ping.
@@ -139,13 +145,32 @@ class nClient(threading.Thread):
         msg.id = self.__get_id()
         msg.timestamp = time.time()
         
+        self.__lock.acquire()
         self.__outgoing.append(msg)
+        self.__lock.release()
 
     ## Returns a new message id.  This is used internally, do not use it externally.
     def __get_id(self):
         self.__msgId += 1
         
         return self.__msgId
+
+    ## Process incoming messages
+    def __process_incoming(self):
+        pass
+
+    ## Sends outgoing messages.
+    def __send_outgoing(self):
+        self.__lock.acquire()
+        while len(self.__outgoing) > 0:
+            b = self.__outgoing.pop(0)
+            
+            msgType = self.__pedia.GetTypeID(b)
+            b.mtype = msgType
+            bufpayload = b.SerializeToString()
+            payload = struct.pack("!I", msgType) + bufpayload
+            self.__socket.sendto(payload, (self.__host, self.__port) )
+        self.__lock.release()
 
     ## Starts the server.  Don't call this directly, instead call Start().
     def run(self):
@@ -171,25 +196,23 @@ class nClient(threading.Thread):
                 padding = len(data) - 4
                 formatString = "!I" + str(padding) + "s"
                 theId, payload = struct.unpack(formatString, data)
-                
+                print theId
                 buf = self.__pedia.GetMessageType(theId)()
                 buf.ParseFromString(payload)
                 
                 # Now we have the message parsed into an object.  What do we do with it?
-                print buf
-                    
-            for a in outF:
-                while len(self.__outgoing) > 0:
-                    b = self.__outgoing.pop(0)
-                    
-                    msgType = self.__pedia.GetTypeID(b)
-                    bufpayload = b.SerializeToString()
-                    payload = struct.pack("!I", msgType) + bufpayload
-                    self.__socket.sendto(payload, (self.__host, self.__port) )
-
+                # Answer: put it in a list.  When all packets are appropriately listed, then
+                # we'll go through each one and do something about them.
+                self.__incoming.add( [theId, buf] )
+            
+            self.__process_incoming()
+            
+            self.__send_outgoing()
             
             time.sleep(0.01)
-            
+        
+        self.__send_outgoing()
+        
         self.__socket.close()
 
 '''

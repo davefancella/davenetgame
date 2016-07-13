@@ -150,7 +150,7 @@ class nServer(threading.Thread):
                         if theId == mp.M_LOGIN:
                             print "User logging in."
                             newCon = self.__connections.Create(addr, buf.player)
-                            newCon.Login()
+                            newCon.Login(buf)
                             print "User " + buf.player + " has logged in."
                             
                         continue
@@ -167,12 +167,11 @@ class nServer(threading.Thread):
                     # Ignore login requests from users already logged in
                     pass
                 elif theId == mp.M_LOGOUT:
-                    print "User " + con.player + " has logged out."
+                    print "User " + con.player() + " has logged out."
                     # TODO: Add the callback for calling into the game so the game can respond to logouts.
                     self.__connections.Remove(con)
                     
                 print buf
-            
             
             # Maintain connections.  At this point, all that the connections will do is queue up their
             # own internal messages, which will be flushed later.
@@ -180,19 +179,18 @@ class nServer(threading.Thread):
             
             # Send messages queued up by each connection.  Send one to each connection, going round-robin
             # until all connections have been serviced.
-            for a in outF:
-                while self.__connections.HasOutgoing():
-                    for con in self.__connections:
-                        if con.HasOutgoing():
-                            print "Sending message for connection", con
-                            msg = con.NextOutgoing()
-                            
-                            msgpayload = msg.SerializeToString()
-                            
-                            # Encode the message
-                            payload = struct.pack("!I", msg.mtype) + payload
-                            
-                            self.__socket.sendto(payload, con.info() )
+            while self.__connections.HasOutgoing():
+                for con in self.__connections:
+                    if con.HasOutgoing():
+                        print "Sending message for connection", con
+                        msg = con.NextOutgoing()
+                        
+                        msgpayload = msg.SerializeToString()
+                        
+                        # Encode the message
+                        payload = struct.pack("!I", msg.mtype) + payload
+                        
+                        self.__socket.sendto(payload, con.info() )
             
             time.sleep(0.01)
             
