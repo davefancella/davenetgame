@@ -121,7 +121,6 @@ class nServer(threading.Thread):
 
     ## Starts the server.  Don't call this directly, instead call Start().
     def run(self):
-        #now keep talking with the client
         while self.__continue:
             inF, outF, errF = select.select( [self.__socket],  [self.__socket], [self.__socket], 5)
             
@@ -179,7 +178,6 @@ class nServer(threading.Thread):
             while self.__connections.HasOutgoing():
                 for con in self.__connections:
                     if con.HasOutgoing():
-                        print "Sending message for connection", con
                         msg = con.NextOutgoing()
                         
                         msg.id = mp.get_id()
