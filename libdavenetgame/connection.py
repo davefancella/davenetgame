@@ -205,6 +205,9 @@ class nConnectionList(object):
     def __init__(self):
         self.__connections = []
         
+    def __len__(self):
+        return len(self.__connections)
+        
     ## Create a new connection that points to the address given by address.
     def Create(self, address, player):
         if address not in self.__connections:
