@@ -173,7 +173,7 @@ class nClient(threading.Thread):
             theAck.replied.append(a)
         # Disable the following line to stop acks from happening.  Useful to test the server's connection
         # maintenance.
-        #self.AddOutgoing(theAck)
+        self.AddOutgoing(theAck)
 
     ## Sends outgoing messages.
     def __send_outgoing(self):

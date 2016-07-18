@@ -40,6 +40,15 @@ C_TIMINGOUT = 2
 #  because the connection should be terminated.
 C_TIMEOUT = 3
 
+## This is a list of connection statuses to be shown to the user.  It's the format [status, useful text],
+#  where the index is one of the above constants.
+statuslist = [
+    ['C_OK', "Ok"],
+    ['C_SILENT', "Silent"],
+    ['C_TIMINGOUT', "Timing Out"],
+    ['C_TIMEOUT', "Timed out"]
+]
+
 # Convenient line to copy the global statement for methods that need it.
 # global C_OK, C_SILENT, C_TIMINGOUT, C_TIMEOUT
 

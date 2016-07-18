@@ -29,6 +29,7 @@ import threading
 import readline
 
 from libdavenetgame import server
+from libdavenetgame import connection
  
 ## This class implements the basic server callback object.  You should inherit this class and add methods
 #  as needed to respond to callbacks.  The callbacks themselves will come from within the same thread as
@@ -78,7 +79,7 @@ class ServerCallback(object):
                     print "There are no connections at this time."
                 else:
                     for a in self.__server.GetConnectionList():
-                        print "%3s: %40s" % (a.id(), str(a) )
+                        print "%3s: %40s  %10s" % (a.id(), str(a), connection.statuslist[a.Status()][1] )
             else:
                 print "Unknown thing to show: " + args[0]
     
