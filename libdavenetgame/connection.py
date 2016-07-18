@@ -102,7 +102,9 @@ class nConnection(object):
         return self.__id
         
     ## All of the logic for maintaining a connection is kept here, but the actual message sending isn't
-    #  handled here.  The timestep parameter should be a timestamp from the server.
+    #  handled here.  The timestep parameter should be a timestamp from the server.  This runs in the
+    #  server thread, so it should keep itself in its own space and not bother anything else.  Use the
+    #  incoming and outgoing message queues to exchange information with the rest of the app.
     def maintain(self, timestep):
         if (timestep - self.__lastping) > 0.98:
             self.Ping(timestep)
@@ -147,7 +149,6 @@ class nConnection(object):
     #  The id and timestamp will be assigned as it's added to the queue.  Once queued, the message is ready
     #  to send.
     def AddOutgoing(self, msg, timestep=None):
-        msg.id = mp.get_id()
         if timestep is None:
             msg.timestamp = time.time()
         
@@ -204,6 +205,9 @@ class nConnectionList(object):
     
     def __init__(self):
         self.__connections = []
+        
+    def __len__(self):
+        return len(self.__connections)
         
     ## Create a new connection that points to the address given by address.
     def Create(self, address, player):

@@ -22,4 +22,23 @@
 
 '''
 
+import exceptions
+
+## @file
+#
+#  This file contains the exceptions used by the library.  A few standard exceptions are also put here,
+#  with the hope that an app developer will only ever need to import this file for exceptions.
+
+## Transparently pass this exception on to the rest of the library.
+#KeyboardInterrupt = exceptions.KeyboardInterrupt
+
+## The base class for all library exceptions
+class dngException(Exception):
+    pass
+
+## This exception is thrown when a required callback method hasn't been implemented.
+class dngCallbackNotImplemented(dngException, NotImplementedError):
+    pass
+
+
 

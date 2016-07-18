@@ -121,7 +121,6 @@ class nServer(threading.Thread):
 
     ## Starts the server.  Don't call this directly, instead call Start().
     def run(self):
-        #now keep talking with the client
         while self.__continue:
             inF, outF, errF = select.select( [self.__socket],  [self.__socket], [self.__socket], 5)
             
@@ -148,7 +147,6 @@ class nServer(threading.Thread):
                         
                         # Login the user, send a response
                         if theId == mp.M_LOGIN:
-                            print "User logging in."
                             newCon = self.__connections.Create(addr, buf.player)
                             newCon.Login(buf)
                             print "User " + buf.player + " has logged in."
@@ -159,8 +157,6 @@ class nServer(threading.Thread):
                 con = self.__connections.GetConnection(addr)
                 buf = self.__pedia.GetMessageType(theId)()
                 
-                print theId, type(buf)
-                
                 buf.ParseFromString(payload)
                 
                 if theId == mp.M_LOGIN:
@@ -168,7 +164,7 @@ class nServer(threading.Thread):
                     pass
                 elif theId == mp.M_LOGOUT:
                     print "User " + con.player() + " has logged out."
-                    # TODO: Add the callback for calling into the game so the game can respond to logouts.
+                    # @todo Add the callback for calling into the game so the game can respond to logouts.
                     self.__connections.Remove(con)
                     
                 print buf
@@ -182,10 +178,11 @@ class nServer(threading.Thread):
             while self.__connections.HasOutgoing():
                 for con in self.__connections:
                     if con.HasOutgoing():
-                        print "Sending message for connection", con
                         msg = con.NextOutgoing()
                         
-                        msgpayload = msg.SerializeToString()
+                        msg.id = mp.get_id()
+                        msg.mtype = self.__pedia.GetTypeID(msg)
+                        payload = msg.SerializeToString()
                         
                         # Encode the message
                         payload = struct.pack("!I", msg.mtype) + payload

@@ -1,7 +1,0 @@
-Dave's Stupid Network Game Library
-
-This library is an attempt to make a UDP-based game network library that handles all
-the bookkeeping chores, making it easier to write multi-player network games in python.
-
-
-

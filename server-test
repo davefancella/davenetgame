@@ -22,96 +22,29 @@
 
 '''
 
-import sys, exceptions
 from time import sleep
+import time, exceptions
 
 import readline
 
-from libdavenetgame import server
+from libdavenetgame import server_callback
  
 HOST = ''   # Symbolic name meaning all available interfaces
 PORT = 8888 # Arbitrary non-privileged port
  
-theServer = server.nServer()
-theServer.ListenOn(HOST, PORT)
-
-theServer.Start()
-
-print "Starting test server."
-
-## Help text for commands.
-commands = {
-    'show' : { 'usage' : "Usage: show (connections)",
-              'desc'  : "Show whatever you want to see." },
-    'help' : { 'usage' : "help [command]",
-              'desc'  : "Print this helpful text.  Alternately, type in a command to see its helpful text." },
-    'quit' : { 'usage' : "quit",
-              'desc'  : "Quit the test client." },
-}
-
-def Help(command=None):
-    global commands
-    
-    if command is not None:
-        if commands.has_key(command):
-            print "%10s : %s" % (command, commands[command]["desc"])
-            print "%13s %s" % (" ", commands[command]['usage'])
-            print
-        else:
-            print "Command not found."
-    else:
-        for key, value in commands.iteritems():
-            print "%10s : %s" % (key, value["desc"] )
-            print "%13s %s" % (" ", value['usage'] )
-            print
-
+theServer = server_callback.ServerCallback(host = HOST,
+                                           port = PORT)
+theServer.StartServer()
 keepGoing = True
 
 try:
     while(keepGoing) :
-        msg = raw_input('')
-        
-        args = msg.split(" ")
-        
-        command = args.pop(0)
-        
-        command = command.lower()
-        
-        # Ignore simple presses of enter
-        if command == '':
-            continue
-        
-        if command == "show":
-            if len(args) != 1:
-                print "Usage: show (connections)"
-            else:
-                if args[0] == "connections":
-                    if len(theServer.GetConnectionList() ) == 0:
-                        print "There are no connections at this time."
-                    else:
-                        for a in theServer.GetConnectionList():
-                            print "%3s: %40s" % (a.id(), str(a) )
-                else:
-                    print "Unknown thing to show: " + args[0]
-        elif command == "quit":
-            pass
-            #if theClient is not None:
-            #    theClient.Logout()
-            #    theClient.Stop(True)
-            #    theClient = None
-            keepGoing = False
-        elif command == "help":
-            if len(args) < 1:
-                Help()
-            else:
-                Help(args[0])
-        else:
-            print "Command not recognized."
+        theServer.Update(time.time() )
         
 except exceptions.KeyboardInterrupt:
     print "Quitting due to keyboard interrupt"
 
-theServer.Stop(True)
+theServer.Stop()
 print
 
 

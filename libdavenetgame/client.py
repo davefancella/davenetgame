@@ -157,7 +157,20 @@ class nClient(threading.Thread):
 
     ## Process incoming messages
     def __process_incoming(self):
-        pass
+        while len(self.__incoming) > 0:
+            self.__lock.acquire()
+            a = self.__incoming.pop(0)
+            self.__lock.release()
+            theId, buf = a[0], a[1]
+
+            if theId == mp.M_PING:
+                self.__send_ack(buf)
+                
+    def __send_ack(self, theId):
+        theAck = self.__pedia.GetMessageType(mp.M_ACK_S)()
+        theAck.mtype = mp.M_ACK
+        theAck.replied.append(theId)
+        self.AddOutgoing(thePing)
 
     ## Sends outgoing messages.
     def __send_outgoing(self):
@@ -203,7 +216,7 @@ class nClient(threading.Thread):
                 # Now we have the message parsed into an object.  What do we do with it?
                 # Answer: put it in a list.  When all packets are appropriately listed, then
                 # we'll go through each one and do something about them.
-                self.__incoming.add( [theId, buf] )
+                self.__incoming.append( [theId, buf] )
             
             self.__process_incoming()
             
