@@ -22,14 +22,20 @@
 
 '''
 
+import getpass # for convenience
+
+from libdavenetgame import client
+
 class ClientCallback(object):
     __host = None
     __port = None
+    __name = None
     __client = None
 
     def __init__(self, **args):
         self.__host = 'localhost'
         self.__port = 8888
+        self.__name = getpass.getuser()
         
         if args.has_key('host'):
             self.SetHost = args['host']
@@ -50,7 +56,7 @@ class ClientCallback(object):
         self.__client.SetServer(self.__host, self.__port)
         self.__client.Start()
         
-        self.__client.Login(name)
+        self.__client.Login(self.__name)
 
         # @todo: Write the part that connects the callbacks to the client object
 
