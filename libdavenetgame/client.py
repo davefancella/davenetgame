@@ -157,20 +157,23 @@ class nClient(threading.Thread):
 
     ## Process incoming messages
     def __process_incoming(self):
+        ackList = []
         while len(self.__incoming) > 0:
             self.__lock.acquire()
             a = self.__incoming.pop(0)
             self.__lock.release()
             theId, buf = a[0], a[1]
-
-            if theId == mp.M_PING:
-                self.__send_ack(buf)
-                
-    def __send_ack(self, theId):
-        theAck = self.__pedia.GetMessageType(mp.M_ACK_S)()
+            if buf.mtype != mp.M_ACK:
+                ackList.append( buf.id )
+            
+        # Ack all incoming messages
+        theAck = self.__pedia.GetMessageType(mp.M_ACK)()
         theAck.mtype = mp.M_ACK
-        theAck.replied.append(theId)
-        self.AddOutgoing(thePing)
+        for a in ackList:
+            theAck.replied.append(a)
+        # Disable the following line to stop acks from happening.  Useful to test the server's connection
+        # maintenance.
+        #self.AddOutgoing(theAck)
 
     ## Sends outgoing messages.
     def __send_outgoing(self):
@@ -209,7 +212,6 @@ class nClient(threading.Thread):
                 padding = len(data) - 4
                 formatString = "!I" + str(padding) + "s"
                 theId, payload = struct.unpack(formatString, data)
-                print theId
                 buf = self.__pedia.GetMessageType(theId)()
                 buf.ParseFromString(payload)
                 

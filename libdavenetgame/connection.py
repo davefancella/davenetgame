@@ -24,6 +24,8 @@
 
 import time
 
+import threading
+
 from libdavenetgame.messages import pedia
 ## Use mp to access the constants and lists in messageList
 from libdavenetgame.messages import messageList as mp
@@ -38,6 +40,8 @@ C_TIMINGOUT = 2
 #  because the connection should be terminated.
 C_TIMEOUT = 3
 
+# Convenient line to copy the global statement for methods that need it.
+# global C_OK, C_SILENT, C_TIMINGOUT, C_TIMEOUT
 
 ## The last ID assigned to a connection
 __lastId = 0
@@ -64,58 +68,137 @@ class nConnection(object):
     ## The list of outgoing messages to this connection.
     __outgoing = None
     
+    ## The list of incoming messages to this connection.
+    __incoming = None
+    
     ## The status of the current connection
     __status = None
     
-    ## The time of the last ping
+    ## The time of the last ping sent
     __lastping = None
     
-    ## All pings that haven't been acked yet, by ID.
+    ## The time the last message was received from the other side
+    __lastrecv = None
+    
+    ## These are pings that are waiting to be answered.  About 60 seconds worth of pings are kept.
+    #  Format of the items is [id, timestamp], where timestamp is when the ping was sent.
     __pinglist = None
+    
+    ## These are other messages that are waiting to be answered.
+    #  Format of the items is [id, timestamp], where timestamp is when the message was sent.
+    __acklist = None
     
     ## Local copy of the pedia
     __pedia = None
     
-    ## These are pings that are waiting to be answered.  About 60 seconds worth of pings are kept.
-    #  Only the ID is kept, because that's all that's sent by the ack packet.
-    __pings = None
-
     ## When you instantiate an nConnection, you must give it a host and port.  There's
     #  no such thing as a connection without one.
     def __init__(self, host, port, player):
+        global C_OK, C_SILENT, C_TIMINGOUT, C_TIMEOUT
+        
         self.__host = host
         self.__port = port
         self.__player = player
         self.__id = GetConId()
         
         self.__outgoing = []
+        self.__incoming = []
         
         self.__status = C_OK
         self.__lastping = time.time()
+        self.__lastrecv = time.time()
         
         self.__pedia = pedia.getPedia()
         
-        self.__pings = []
+        self.__pinglist = []
+        self.__acklist = []
+        
+        self.__lock = threading.RLock()
         
     ## The id for this connection
     def id(self):
         return self.__id
+    
+    ## Returns the current status of the connection
+    def Status(self):
+        return self.__status
         
     ## All of the logic for maintaining a connection is kept here, but the actual message sending isn't
     #  handled here.  The timestep parameter should be a timestamp from the server.  This runs in the
     #  server thread, so it should keep itself in its own space and not bother anything else.  Use the
-    #  incoming and outgoing message queues to exchange information with the rest of the app.
+    #  incoming and outgoing message queues to exchange information with the rest of the app, making sure
+    #  to use the __lock object to avoid thread collisions on the queues.
     def maintain(self, timestep):
+        # First, process incoming messages.  We do this first so that the housekeeping messages
+        # received are all processed before updating the connection status and sending new pings.
+        ackList = []
+        while len(self.__incoming) > 0:
+            self.__lock.acquire()
+            msg = self.__incoming.pop(0)
+            self.__lock.release()
+            
+            # First, build a list of message id's that will need to be acked.
+            # Check the message type and respond to housekeeping messages.
+            if msg.mtype == mp.M_ACK:
+                # Don't ack an ack!
+                # First we'll search the ping list.  These are pings waiting to be acked.  We'll remove each
+                # one from the list as they're acked.
+                pingAcked = False
+                cleaned_list = []
+                for replyId in msg.replied:
+                    for x in self.__pinglist:
+                        if x[0] == replyId:
+                            # This means we've received a ping ack, and treat it as though we've pinged.
+                            pingAcked = True
+                        else:
+                            # If this ping isn't acked, keep it in the list
+                            cleaned_list.append(x)
+                    self.__pinglist = cleaned_list
+                if pingAcked:
+                    self.__lastping = timestep
+            else:
+                ackList.append(msg.id)
+            
+            # If we made it all the way here, we've received a message, so mark lastrecv accordingly
+            self.__lastrecv = timestep
+            
+        # Now, ack all the messages that were received
+        Nmsg = self.__pedia.GetMessageType(mp.M_ACK)()
+        Nmsg.mtype = mp.M_ACK
+        for nid in ackList:
+            Nmsg.replied.append(nid)
+        
+        # Clean out the ping list of expired pings.
+        cleaned_list = [ x for x in self.__pinglist if (timestep - x[1]) < 2.0 ]
+        self.__pinglist = cleaned_list
+        
+        self.AddOutgoing(Nmsg)
+        
         if (timestep - self.__lastping) > 0.98:
             self.Ping(timestep)
             
             # This loop should only happen if there's either an extreme amount of packet loss, the client
             # has disconnected, or the pings aren't being acked properly.  However, even if the client
             # has disconnected, this loop still shouldn't run because the client times out after 30 seconds.
-            while len(self.__pings) > 65:
-                self.__pings.pop(0)
+            while len(self.__pinglist) > 65:
+                self.__pinglist.pop(0)
+
+        # Now, send pings and update connection status.
+        timeinterval = timestep - self.__lastrecv
+        
+        # Update the status of this connection based on how long since we've heard from the client.
+        global C_OK, C_SILENT, C_TIMINGOUT, C_TIMEOUT
+        
+        if timeinterval < 10.0:
+            self.__status = C_OK
+        elif (timeinterval >= 10.0) and (timeinterval < 20.0):
+            self.__status = C_SILENT
+        elif (timeinterval >= 20.0) and (timeinterval < 30.0):
+            self.__status = C_TIMINGOUT
+        elif (timeinterval >= 30.0):
+            self.__status = C_TIMEOUT
     
-    ## Tell the connection to login, which at this time consists of sending a LoginAck to the connected
+    ## Tell the connection to login, which at this time consists of sending an ack to the connected
     #  client and starting connection maintenance.
     def Login(self, loginPacket):
         msg = self.__pedia.GetMessageType(mp.M_ACK)()
@@ -133,10 +216,8 @@ class nConnection(object):
         self.__lastping = timestep
         
         theId = self.AddOutgoing(thePing, timestep)
-        self.__pings.append(theId)
+        self.__pinglist.append( [theId, timestep] )
         
-        print "Ping sent."
-    
     ## Checks if the connection has outgoing messages to send
     def HasOutgoing(self):
         if len(self.__outgoing) > 0:
@@ -152,13 +233,34 @@ class nConnection(object):
         if timestep is None:
             msg.timestamp = time.time()
         
+        msg.id = mp.get_id()
+        
+        self.__lock.acquire()
         self.__outgoing.append(msg)
+        self.__lock.release()
         
         return msg.id
 
     ## Gets the next outgoing message.
     def NextOutgoing(self):
-        return self.__outgoing.pop(0)
+        self.__lock.acquire()
+        ret = self.__outgoing.pop(0)
+        self.__lock.release()
+        
+        return ret
+    
+    ## Adds an incoming message to the queue.
+    def AddIncoming(self, msg):
+        self.__lock.acquire()
+        self.__incoming.append(msg)
+        self.__lock.release()
+        
+    ## Returns True if there are incoming messages to process, false otherwise.
+    def HasIncoming(self):
+        if len(self.__incoming) > 0:
+            return True
+                
+        return False
         
     ## Returns a tuple of the connection information suitable for passing to a socket.
     def info(self):
@@ -226,6 +328,16 @@ class nConnectionList(object):
                 aCon = self.__connections.pop(a)
                 break
         del aCon
+        
+    ## Get connections with the given status.
+    #  @param status: one of C_OK, C_SILENT, C_TIMINGOUT, C_TIMEOUT
+    def GetStatus(self, status):
+        theList = []
+        for a in self.__connections:
+            if a.Status() == status:
+                theList.append(a)
+        
+        return theList
         
     def append(self, item):
         self.__connections.append(item)

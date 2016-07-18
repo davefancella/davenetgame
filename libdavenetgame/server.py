@@ -56,7 +56,10 @@ class nServer(threading.Thread):
     
     ## The list of current connections
     __connections = None
-    
+
+    ## This is the lock that must be called to avoid thread collisions
+    __lock = None
+        
     def __init__(self, **args):
         threading.Thread.__init__(self, **args)
         
@@ -65,6 +68,8 @@ class nServer(threading.Thread):
         self.__continue = False
     
         self.__connections = connection.nConnectionList()
+        
+        self.__lock = threading.RLock()
 
     ## Returns the list of connections from the server
     def GetConnectionList(self):
@@ -137,6 +142,7 @@ class nServer(threading.Thread):
                 formatString = "!I" + str(padding) + "s"
                 theId, payload = struct.unpack(formatString, data)
                 
+                # Handle all messages first that don't require being logged in.
                 if addr not in self.__connections:
                     if theId not in mp.noLogin:
                         # You must be logged in, and you aren't, so discard the message and ignore it.
@@ -159,6 +165,8 @@ class nServer(threading.Thread):
                 
                 buf.ParseFromString(payload)
                 
+                # Logins and logouts are handled here, but everything else is handled by the
+                # nConnection objects.
                 if theId == mp.M_LOGIN:
                     # Ignore login requests from users already logged in
                     pass
@@ -166,8 +174,9 @@ class nServer(threading.Thread):
                     print "User " + con.player() + " has logged out."
                     # @todo Add the callback for calling into the game so the game can respond to logouts.
                     self.__connections.Remove(con)
-                    
-                print buf
+                else:
+                    # Delegate to the connection objects to handle everything else.
+                    con.AddIncoming(buf)
             
             # Maintain connections.  At this point, all that the connections will do is queue up their
             # own internal messages, which will be flushed later.
@@ -180,7 +189,9 @@ class nServer(threading.Thread):
                     if con.HasOutgoing():
                         msg = con.NextOutgoing()
                         
-                        msg.id = mp.get_id()
+                        # Only assign an id if an id hasn't already been assigned
+                        if msg.id == 0:
+                            msg.id = mp.get_id()
                         msg.mtype = self.__pedia.GetTypeID(msg)
                         payload = msg.SerializeToString()
                         
@@ -188,6 +199,13 @@ class nServer(threading.Thread):
                         payload = struct.pack("!I", msg.mtype) + payload
                         
                         self.__socket.sendto(payload, con.info() )
+            
+            # Look for timeout connections and remove them
+            for a in self.__connections.GetStatus(connection.C_TIMEOUT):
+                print "User " + con.player() + " has timed out."
+                # @todo Add the callback for calling into the game so the game can respond to logouts.
+                self.__connections.Remove(con)
+                
             
             time.sleep(0.01)
             

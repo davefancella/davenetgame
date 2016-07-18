@@ -34,12 +34,19 @@ _allpaths = {}
 
 _appdirname = None
 
+## Returns the directory separator for the current platform.
 def DirSep():
     return os.linesep
 
+## Expands a path that may include the special "~/" sequence to an absolute path.
 def UnHome(path):
     return os.path.expanduser(path)
 
+## Lists the directory given by path.
+#  @param path : the path to list
+#  @param includeDirs : if True, the list will include directories, but not the . and .. directories.
+#  @param includeFiles : if True, the list will include filenames.
+#  @return A list of everything asked for.
 def ListDir(path, includeDirs=True, includeFiles = True):
     listing = []
     if os.path.isdir(path):
@@ -53,14 +60,24 @@ def ListDir(path, includeDirs=True, includeFiles = True):
         listing.sort()
     return listing
 
+## Returns the last part of the path.  This *should* be the filename, including its extension, but in the
+#  case where the last element is a directory, the directory name will be returned.
+#  @param path the path to the file.
 def GetLastPathElement(path):
     base, tail = os.path.split(path)
     return tail
 
+## Returns the directory to a file.  It should be everything up to the file, e.g. /usr/bin/python would
+#  return /usr/bin
+#  @param path : the path to the file.
+#  @return the directory.
 def GetDir(path):
     base, tail = os.path.split(path)
     return base
 
+## Returns the extension of the file, in lower case, without the period.
+#  @param path : The path to the file.  This can actually be just a filename.
+#  @return the extension of the file, in lower case, without the period.
 def GetMimeExtension(path):
     lastpart = GetLastPathElement(path)
     base, tail = os.path.splitext(lastpart)
@@ -69,7 +86,9 @@ def GetMimeExtension(path):
     else:
         return ""
 
-## Returns a string containing the current username
+## Returns a string containing the current username.  In Windows, if the win32api module is
+#  unavailable, it'll return "Player 1", because that's funny.
+#  @return the current logged in username.
 def GetUsername():
     if sys.platform == "win32":
         try:
@@ -80,10 +99,14 @@ def GetUsername():
         return pwd.getpwuid(os.getuid())[0]
 
 ## Return the asset path desired.  If targetFile is not none, then it will join the filename to the asset path,
-# returning a complete path to the file you want.
+# returning a complete path to the file you want.  This allows you to open app asset files in a cross-platform
+# way, run from the source directory, etc.  When you specify a targetFile, the string returned can be
+# passed directly to open().
 # @param path the program asset path desired, such as 'resource', 'civilizations', or 'flags'.
 # @param targetFile Filename to join to the asset path, in which case the path returned points
 #                               at this file.  Defaults to None.
+# @return the path to the asset directory, with or without the filename you're wanting.
+# 
 # @todo make GetPath throw an exception or something instead if a path isn't known
 def GetPath(path, targetFile=None):
     global _allpaths
@@ -98,20 +121,25 @@ def GetPath(path, targetFile=None):
         print _allpaths
         return None
 
+## Returns true if the path exists.
 def Exists(path):
     return os.path.exists(path)
 
+## Returns the last time modified for the path, when supported by the OS.
 def ModifiedTime(path):
     statresults = os.stat(path)
     
     return statresults.st_mtime
 
+## Returns true if the path given is a directory.
 def IsDir(path):
     return os.path.isdir(path)
 
+## Returns true if the path given is a file.
 def IsFile(path):
     return os.path.isfile(path)
 
+## Shortcut helper to get icons.
 def GetIcon(icon):
     return JoinPaths(GetPath('graphics'), icon)
 
@@ -177,16 +205,20 @@ def InitializePaths(appDirName, thePaths):
             # it already.
             valueList[a] = valueList[a].replace('__appname', appDirName)
         _allpaths[key] = JoinPaths( *valueList )
-    
+
+## Returns the directory name for the app.    
 def GetAppDirName():
     global _appdirname
     
     return _appdirname
 
+## Joins the paths given in args.  You should never need to use this, but the paths module uses it
+#  extensively.
 def JoinPaths(*args):
     return os.path.normpath(os.path.expanduser(os.path.join(*args) ) )
 
-# Returns True on success and False on failure
+## Makes a directory, with optional permissions as specified by the caller.
+#  Returns True on success and False on failure
 def MkDir(path, permissions = 0775):
     path = os.path.expanduser(path)
     if Exists(path):
@@ -199,6 +231,7 @@ def MkDir(path, permissions = 0775):
         #log.Error("Error creating new directory: '" + path + "', with permissions '" + str(permissions) + "'")
         raise errors.PathError("An unknown error has occured while creating directory '" + path + "' with permissions '" + str(permissions) + "'")
 
+## Opens the file requested, in the mode requested.  No checks on the path are done.
 def OpenFile(path, mode):
     try:
         fp = open(path, mode)
@@ -207,6 +240,7 @@ def OpenFile(path, mode):
         #log.Error("Error opening file " + str(path) + " for mode '" + str(mode) + "'.")
         return None
 
+## A pass-through to os.walk.  See the python documentation for more information.
 def Walk(path):
     return os.walk(path)
 
