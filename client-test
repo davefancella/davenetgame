@@ -24,12 +24,12 @@
 
 import socket   #for sockets
 import sys  #for exit
-import exceptions
+from libdavenetgame import exceptions
 import getpass # for convenience
 
 import readline
 
-from libdavenetgame import client
+from libdavenetgame import client_callback
 from libdavenetgame.messages import pedia
 
 # create dgram udp socket
@@ -119,23 +119,20 @@ try:
                     if name is not None:
                         # Create the client object and login
                         if theClient is None:
-                            theClient = client.nClient()
-                            theClient.SetServer(host, port)
+                            theClient = client_callback.ClientCallback()
+                            theClient.SetHost(host)
+                            theClient.SetPort(port)
                             theClient.Start()
-                            
-                            theClient.Login(name)
                 else:
                     print "You must specify a port to connect to"
             else:
                 print "You must specify a host to connect to"
         elif command == "logout":
-            theClient.Logout()
-            theClient.Stop(True)
+            theClient.Stop()
             theClient = None
         elif command == "quit":
             if theClient is not None:
-                theClient.Logout()
-                theClient.Stop(True)
+                theClient.Stop()
                 theClient = None
             keepGoing = False
         elif command == "help":
@@ -151,12 +148,11 @@ try:
         else:
             print "Command not recognized."
             
-except exceptions.KeyboardInterrupt:
+except KeyboardInterrupt:
     print "Quitting due to keyboard interrupt"
 
 if theClient is not None:
-    theClient.Logout()
-    theClient.Stop(True)
+    theClient.Stop()
 print
 
 
