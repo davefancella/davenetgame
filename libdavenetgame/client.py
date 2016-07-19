@@ -31,6 +31,7 @@ import select, time
 import struct
 
 from libdavenetgame.messages import pedia
+from libdavenetgame import connection
 from libdavenetgame.messages import messageList as mp
 
 ## This class implements the game server network layer.
@@ -63,6 +64,21 @@ class nClient(threading.Thread):
     ## This is the lock that must be called to avoid thread collisions
     __lock = None
     
+    ## This is the status of our current connection to the server
+    __status = None
+    
+    ## The last time we've received anything from the server
+    __lastrecv = None
+    
+    ## The time the last ping was sent
+    __lastping = None
+    
+    ## Pings waiting to be acked
+    __pinglist = None
+    
+    ## The status of the connection
+    __status = None
+    
     def __init__(self, **args):
         threading.Thread.__init__(self, **args)
         
@@ -76,10 +92,19 @@ class nClient(threading.Thread):
         self.__msgId = 0
         
         self.__lock = threading.RLock()
+        
+        self.__status = connection.C_DISCONNECTED
+        self.__lastrecv = time.time()
+        self.__lastping = time.time()
+        self.__pinglist = []
 
     def SetServer(self, host, port):
         self.__host = host
         self.__port = port
+
+    ## Returns the status of the client.
+    def Status(self):
+        return self.__status
 
     ## Call to start the client.
     def Start(self):
@@ -106,6 +131,8 @@ class nClient(threading.Thread):
         if error is False:
             self.__continue = True
             
+            self.__status = connection.C_OK
+            
             self.start()
 
     ## Stops the server.  It may still take a few seconds or so.  If blocking is "True", then the call will
@@ -121,6 +148,7 @@ class nClient(threading.Thread):
     def SendPing(self):
         thePing = self.__pedia.GetMessageType(mp.M_PING_S)()
         thePing.mtype = mp.M_PING
+        self.__lastping = time.time()
         self.AddOutgoing(thePing)
 
     ## Call to send a login to the server, but it can only be done after the client has been started
@@ -158,13 +186,18 @@ class nClient(threading.Thread):
     ## Process incoming messages
     def __process_incoming(self):
         ackList = []
+        timestep = time.time()
         while len(self.__incoming) > 0:
+            self.__lastrecv = timestep
             self.__lock.acquire()
             a = self.__incoming.pop(0)
             self.__lock.release()
             theId, buf = a[0], a[1]
             if buf.mtype != mp.M_ACK:
                 ackList.append( buf.id )
+            else:
+                # @todo: add the stuff to track messages that need to be acked by the server
+                pass
             
         # Ack all incoming messages
         theAck = self.__pedia.GetMessageType(mp.M_ACK)()
@@ -174,6 +207,31 @@ class nClient(threading.Thread):
         # Disable the following line to stop acks from happening.  Useful to test the server's connection
         # maintenance.
         self.AddOutgoing(theAck)
+        
+        # Do your own maintenance.
+        # The client pings every two seconds, but has the same timeout rules otherwise.
+        if (timestep - self.__lastping) > 1.98:
+            self.SendPing()
+            
+            # This loop should only happen if there's either an extreme amount of packet loss, the client
+            # has disconnected, or the pings aren't being acked properly.  However, even if the client
+            # has disconnected, this loop still shouldn't run because the client times out after 30 seconds.
+            while len(self.__pinglist) > 65:
+                self.__pinglist.pop(0)
+
+        # Now, send pings and update connection status.
+        timeinterval = timestep - self.__lastrecv
+        
+        # Update the status of this connection based on how long since we've heard from the client.
+        if timeinterval < 10.0:
+            self.__status = connection.C_OK
+        elif (timeinterval >= 10.0) and (timeinterval < 20.0):
+            self.__status = connection.C_SILENT
+        elif (timeinterval >= 20.0) and (timeinterval < 30.0):
+            self.__status = connection.C_TIMINGOUT
+        elif (timeinterval >= 30.0):
+            self.__status = connection.C_TIMEOUT
+    
 
     ## Sends outgoing messages.
     def __send_outgoing(self):
@@ -230,23 +288,7 @@ class nClient(threading.Thread):
         
         self.__socket.close()
 
-'''
-     
-    try :
-        #Set the whole string
-        s.sendto(msg, (host, port))
-         
-        # receive data from client (data, addr)
-        d = s.recvfrom(1024)
-        reply = d[0]
-        addr = d[1]
-         
-        print 'Server reply : ' + reply
-     
-    except socket.error, msg:
-        print 'Error Code : ' + str(msg[0]) + ' Message ' + msg[1]
-        sys.exit()
-'''
+
 
 
 

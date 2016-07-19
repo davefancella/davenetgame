@@ -39,6 +39,8 @@ C_TIMINGOUT = 2
 ## The connection hasn't responded to pings for 30 seconds.  No further timeout codes will be stored
 #  because the connection should be terminated.
 C_TIMEOUT = 3
+## You are currently not connected to a server
+C_DISCONNECTED = 4
 
 ## This is a list of connection statuses to be shown to the user.  It's the format [status, useful text],
 #  where the index is one of the above constants.
@@ -46,7 +48,8 @@ statuslist = [
     ['C_OK', "Ok"],
     ['C_SILENT', "Silent"],
     ['C_TIMINGOUT', "Timing Out"],
-    ['C_TIMEOUT', "Timed out"]
+    ['C_TIMEOUT', "Timed out"],
+    ['C_DISCONNECTED', "Disconnected"]
 ]
 
 # Convenient line to copy the global statement for methods that need it.

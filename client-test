@@ -59,6 +59,8 @@ commands = {
               },
     'help' : { 'usage' : "help [command]",
               'desc'  : "Print this helpful text.  Alternately, type in a command to see its helpful text." },
+    'status' : { 'usage' : "status",
+              'desc'  : "Display the status of the current connection." },
     'quit' : { 'usage' : "quit",
               'desc'  : "Quit the test client." },
 }
@@ -145,6 +147,11 @@ try:
                 print "You must be connected to a server to ping!"
             else:
                 theClient.SendPing()
+        elif command == "status":
+            if theClient is None:
+                print "You are not connected to a server."
+            else:
+                print theClient.StatusString()
         else:
             print "Command not recognized."
             

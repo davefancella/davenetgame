@@ -25,6 +25,7 @@
 import getpass # for convenience
 
 from libdavenetgame import client
+from libdavenetgame import connection
 
 class ClientCallback(object):
     __host = None
@@ -78,5 +79,8 @@ class ClientCallback(object):
     def SendPing(self):
         self.__client.SendPing()
         
+    ## Returns a string indicating the status of the connection.
+    def StatusString(self):
+        return connection.statuslist[self.__client.Status()][1]
         
         
