@@ -78,7 +78,19 @@ class ClientCallback(object):
     #  client for testing purposes.
     def SendPing(self):
         self.__client.SendPing()
-        
+    
+    ## Bandwidth used
+    def Bandwidth(self):
+        return self.__client.BytesSent() + self.__client.BytesReceived()
+    
+    ## Bytes sent
+    def BytesSent(self):
+        return self.__client.BytesSent()
+    
+    ## Bytes received
+    def BytesReceived(self):
+        return self.__client.BytesReceived()
+    
     ## Returns a string indicating the status of the connection.
     def StatusString(self):
         return connection.statuslist[self.__client.Status()][1]

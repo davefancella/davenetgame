@@ -152,6 +152,9 @@ try:
                 print "You are not connected to a server."
             else:
                 print theClient.StatusString()
+                print "Bytes received: " + str(theClient.BytesReceived() )
+                print "Bytes sent: " + str(theClient.BytesSent() )
+                print "Bytes transferred: " + str(theClient.Bandwidth() )
         else:
             print "Command not recognized."
             

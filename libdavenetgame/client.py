@@ -79,6 +79,12 @@ class nClient(threading.Thread):
     ## The status of the connection
     __status = None
     
+    ## Bandwidth used by the connection.  This is bytes received.
+    __bandwidth = None
+    
+    ## Bytes send.
+    __bytessent = None
+    
     def __init__(self, **args):
         threading.Thread.__init__(self, **args)
         
@@ -97,10 +103,20 @@ class nClient(threading.Thread):
         self.__lastrecv = time.time()
         self.__lastping = time.time()
         self.__pinglist = []
+        
+        self.__bandwidth = 0
+        
+        self.__bytessent = 0
 
     def SetServer(self, host, port):
         self.__host = host
         self.__port = port
+
+    def BytesSent(self):
+        return self.__bytessent
+    
+    def BytesReceived(self):
+        return self.__bandwidth
 
     ## Returns the status of the client.
     def Status(self):
@@ -135,14 +151,25 @@ class nClient(threading.Thread):
             
             self.start()
 
-    ## Stops the server.  It may still take a few seconds or so.  If blocking is "True", then the call will
-    #  block until the server has shut down.
+    ## Stops the client.  It may still take a few seconds or so.  If blocking is "True", then the call will
+    #  block until the server has shut down.  The default behavior is to block, because it really doesn't make
+    #  sense not to block in most cases.  Be careful, because you may have the main thread ending
+    #  with no knowledge of whether or not the client thread has ended.  In that situation, Join() is
+    #  provided so you can call this one non-blocking, do your thing, then call Join here to be sure the
+    #  thread exits before you end the main program.
+    #
+    #  @param blocking: If True, this call will block.  If False, it returns immediately and the thread will
+    #                   stop itself on its own.  
     def Stop(self, blocking=True):
         self.__continue = False
     
         if blocking:
-            print "Waiting for client thread to stop"
             self.join()
+
+    ## Call this to join the thread and wait until it closes.  Be careful doing this, because if you haven't
+    #  signaled in any way that the thread should end, then your process will continue forever.
+    def Join(self):
+        self.join()
 
     ## Call to simply send a ping.
     def SendPing(self):
@@ -193,17 +220,19 @@ class nClient(threading.Thread):
             a = self.__incoming.pop(0)
             self.__lock.release()
             theId, buf = a[0], a[1]
+            
+            # If the message isn't an ack, put it in the acklist.  Don't ack an ack!
             if buf.mtype != mp.M_ACK:
-                ackList.append( buf.id )
+                ackList.append( buf )
             else:
                 # @todo: add the stuff to track messages that need to be acked by the server
                 pass
-            
-        # Ack all incoming messages
+        
+        # Ack all incoming messages that need it, determined above.
         theAck = self.__pedia.GetMessageType(mp.M_ACK)()
         theAck.mtype = mp.M_ACK
         for a in ackList:
-            theAck.replied.append(a)
+            theAck.replied.append(a.id)
         # Disable the following line to stop acks from happening.  Useful to test the server's connection
         # maintenance.
         self.AddOutgoing(theAck)
@@ -236,15 +265,19 @@ class nClient(threading.Thread):
     ## Sends outgoing messages.
     def __send_outgoing(self):
         self.__lock.acquire()
-        while len(self.__outgoing) > 0:
-            b = self.__outgoing.pop(0)
-            
+        for b in self.__outgoing:
             msgType = self.__pedia.GetTypeID(b)
             b.mtype = msgType
             bufpayload = b.SerializeToString()
             payload = struct.pack("!I", msgType) + bufpayload
+
+            self.__bytessent += len(payload)
+
             self.__socket.sendto(payload, (self.__host, self.__port) )
+        self.__outgoing = []
+        
         self.__lock.release()
+                        
 
     ## Starts the server.  Don't call this directly, instead call Start().
     def run(self):
@@ -260,6 +293,8 @@ class nClient(threading.Thread):
                 
                 if not data: 
                     break
+                
+                self.__bandwidth += len(data)
                 
                 # Discard the unusual packet sent from someone to this connection that isn't the server
                 # we've connected to.  This may cause problems with dns lookups which we'll have to fix

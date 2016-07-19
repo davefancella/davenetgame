@@ -59,6 +59,9 @@ class nServer(threading.Thread):
 
     ## This is the lock that must be called to avoid thread collisions
     __lock = None
+    
+    ## Bandwidth used
+    __bandwidth = None
         
     def __init__(self, **args):
         threading.Thread.__init__(self, **args)
@@ -70,6 +73,8 @@ class nServer(threading.Thread):
         self.__connections = connection.nConnectionList()
         
         self.__lock = threading.RLock()
+        
+        self.__bandwidth = 0
 
     ## Returns the list of connections from the server
     def GetConnectionList(self):
@@ -198,7 +203,11 @@ class nServer(threading.Thread):
                         # Encode the message
                         payload = struct.pack("!I", msg.mtype) + payload
                         
+                        self.__bandwidth += len(payload)
+                        
                         self.__socket.sendto(payload, con.info() )
+                        
+                        del msg
             
             # Look for timeout connections and remove them
             for a in self.__connections.GetStatus(connection.C_TIMEOUT):
