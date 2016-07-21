@@ -144,10 +144,15 @@ class nConnection(object):
         # First, process incoming messages.  We do this first so that the housekeeping messages
         # received are all processed before updating the connection status and sending new pings.
         ackList = []
-        while len(self.__incoming) > 0:
-            self.__lock.acquire()
+        self.__lock.acquire()
+        while self.HasIncoming():
+            msg = None
             msg = self.__incoming.pop(0)
-            self.__lock.release()
+            
+            #print ":", len(self.__incoming), msg
+            
+            # If we've received a message, so mark lastrecv accordingly
+            self.__lastrecv = timestep
             
             # First, build a list of message id's that will need to be acked.
             # Check the message type and respond to housekeeping messages.
@@ -164,38 +169,38 @@ class nConnection(object):
                             pingAcked = True
                         else:
                             # If this ping isn't acked, keep it in the list
-                            cleaned_list.append(x)
+                            #cleaned_list.append(x)
+                            pass
                     self.__pinglist = cleaned_list
                 if pingAcked:
                     self.__lastping = timestep
             else:
-                ackList.append(msg.id)
-            
-            # If we made it all the way here, we've received a message, so mark lastrecv accordingly
-            self.__lastrecv = timestep
+                #ackList.append(msg.id)
+                pass
+        
+        self.__lock.release()
             
         # Now, ack all the messages that were received
-        Nmsg = self.__pedia.GetMessageType(mp.M_ACK)()
-        Nmsg.mtype = mp.M_ACK
-        for nid in ackList:
-            Nmsg.replied.append(nid)
+        if len(ackList) > 0:
+            Nmsg = self.__pedia.GetMessageType(mp.M_ACK)()
+            Nmsg.mtype = mp.M_ACK
+            for nid in ackList:
+                Nmsg.replied.append(nid)
+            
+            #self.AddOutgoing(Nmsg)
+        
+        # Make sure the acklist is empty after this point
+        ackList = None
+        ackList = []
         
         # Clean out the ping list of expired pings.
         cleaned_list = [ x for x in self.__pinglist if (timestep - x[1]) < 2.0 ]
         self.__pinglist = cleaned_list
         
-        self.AddOutgoing(Nmsg)
-        
+        # Now, send pings and update connection status.
         if (timestep - self.__lastping) > 0.98:
             self.Ping(timestep)
-            
-            # This loop should only happen if there's either an extreme amount of packet loss, the client
-            # has disconnected, or the pings aren't being acked properly.  However, even if the client
-            # has disconnected, this loop still shouldn't run because the client times out after 30 seconds.
-            while len(self.__pinglist) > 65:
-                self.__pinglist.pop(0)
 
-        # Now, send pings and update connection status.
         timeinterval = timestep - self.__lastrecv
         
         # Update the status of this connection based on how long since we've heard from the client.
@@ -263,6 +268,9 @@ class nConnection(object):
     
     ## Adds an incoming message to the queue.
     def AddIncoming(self, msg):
+        print msg
+        if msg.mtype == mp.M_ACK and len(msg.replied) == 0:
+            raise Exception
         self.__lock.acquire()
         self.__incoming.append(msg)
         self.__lock.release()

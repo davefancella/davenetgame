@@ -60,8 +60,15 @@ class nServer(threading.Thread):
     ## This is the lock that must be called to avoid thread collisions
     __lock = None
     
-    ## Bandwidth used
-    __bandwidth = None
+    ## Bytes received
+    __bytesreceived = None
+    
+    ## Bytes sent
+    __bytessent = None
+    
+    ## Buffer size, used for all connections, since you can't know which connection has sent you a packet
+    #  until you do the socket read.
+    __buffersize = None
         
     def __init__(self, **args):
         threading.Thread.__init__(self, **args)
@@ -74,7 +81,10 @@ class nServer(threading.Thread):
         
         self.__lock = threading.RLock()
         
-        self.__bandwidth = 0
+        self.__bytesreceived = 0
+        self.__bytessent = 0
+        
+        self.__buffersize = 1024
 
     ## Returns the list of connections from the server
     def GetConnectionList(self):
@@ -136,12 +146,12 @@ class nServer(threading.Thread):
             
             for ins in inF:
                 # receive data from client (data, addr)
-                d = self.__socket.recvfrom(1024)
-                data = d[0]
-                addr = d[1]
+                data, addr = self.__socket.recvfrom(self.__buffersize)
                 
                 if not data: 
                     break
+                
+                self.__bytesreceived += len(data)
                 
                 padding = len(data) - 4
                 formatString = "!I" + str(padding) + "s"
@@ -181,6 +191,7 @@ class nServer(threading.Thread):
                     self.__connections.Remove(con)
                 else:
                     # Delegate to the connection objects to handle everything else.
+                    print buf
                     con.AddIncoming(buf)
             
             # Maintain connections.  At this point, all that the connections will do is queue up their
@@ -203,7 +214,7 @@ class nServer(threading.Thread):
                         # Encode the message
                         payload = struct.pack("!I", msg.mtype) + payload
                         
-                        self.__bandwidth += len(payload)
+                        self.__bytessent += len(payload)
                         
                         self.__socket.sendto(payload, con.info() )
                         

@@ -222,20 +222,21 @@ class nClient(threading.Thread):
             theId, buf = a[0], a[1]
             
             # If the message isn't an ack, put it in the acklist.  Don't ack an ack!
-            if buf.mtype != mp.M_ACK:
+            if theId != mp.M_ACK:
                 ackList.append( buf )
             else:
                 # @todo: add the stuff to track messages that need to be acked by the server
                 pass
         
-        # Ack all incoming messages that need it, determined above.
-        theAck = self.__pedia.GetMessageType(mp.M_ACK)()
-        theAck.mtype = mp.M_ACK
-        for a in ackList:
-            theAck.replied.append(a.id)
-        # Disable the following line to stop acks from happening.  Useful to test the server's connection
-        # maintenance.
-        self.AddOutgoing(theAck)
+        if len(ackList) > 0:
+            # Ack all incoming messages that need it, determined above.
+            theAck = self.__pedia.GetMessageType(mp.M_ACK)()
+            theAck.mtype = mp.M_ACK
+            for a in ackList:
+                theAck.replied.append(a.id)
+            # Disable the following line to stop acks from happening.  Useful to test the server's connection
+            # maintenance.
+            self.AddOutgoing(theAck)
         
         # Do your own maintenance.
         # The client pings every two seconds, but has the same timeout rules otherwise.
@@ -251,7 +252,7 @@ class nClient(threading.Thread):
         # Now, send pings and update connection status.
         timeinterval = timestep - self.__lastrecv
         
-        # Update the status of this connection based on how long since we've heard from the client.
+        # Update the status of this connection based on how long since we've heard from the server.
         if timeinterval < 10.0:
             self.__status = connection.C_OK
         elif (timeinterval >= 10.0) and (timeinterval < 20.0):
