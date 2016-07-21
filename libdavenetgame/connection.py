@@ -268,7 +268,6 @@ class nConnection(object):
     
     ## Adds an incoming message to the queue.
     def AddIncoming(self, msg):
-        print msg
         if msg.mtype == mp.M_ACK and len(msg.replied) == 0:
             raise Exception
         self.__lock.acquire()
