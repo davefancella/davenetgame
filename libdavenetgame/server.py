@@ -69,6 +69,13 @@ class nServer(threading.Thread):
     ## Buffer size, used for all connections, since you can't know which connection has sent you a packet
     #  until you do the socket read.
     __buffersize = None
+    
+    ## The list of callbacks that will be called.
+    __callbacks = None
+    
+    ## The queue of callbacks waiting to be called.  This list is populated from inside the server thread and executed
+    #  during the server's update method, which is called from the main thread.
+    __callbackqueue = None
         
     def __init__(self, **args):
         threading.Thread.__init__(self, **args)
@@ -85,10 +92,41 @@ class nServer(threading.Thread):
         self.__bytessent = 0
         
         self.__buffersize = 1024
+        
+        self.__callbacks = {}
+        
+        self.__callbackqueue = []
+
+    ## Register a callback function with the server.  The callback will be executed in the main thread, not the
+    #  server network polling thread.  A Callback object is expected here, where in server_callback the expected
+    #  object is the function object.  There must be a timestep argument because when the callback is called,
+    #  the timestep will be sent.  Other arguments needed will be named by the callbacks.
+    def RegisterCallback(self, cbObj):
+        self.__callbacks[cbObj.name()] = cbObj
+    
+    ## Returns a new callback instance with args set to args, which must be a list
+    def GetCallback(self, cb, args):
+        newObj = self.__callbacks[cb].new(callback=self.__callbacks[cb].getcallback() )
+        newObj.setargs(*args)
+        
+        return newObj
+
+    ## Appends a callback object to the callbackqueue.
+    def AppendCallback(self, cb):
+        self.__callbackqueue.append(cb)
 
     ## Returns the list of connections from the server
     def GetConnectionList(self):
         return self.__connections
+
+    ## Updates the server.  This runs from inside the game thread, not the server thread.
+    def Update(self, timestep):
+        self.__connections.Update(timestep)
+        
+        while len(self.__callbackqueue) > 0:
+            a = self.__callbackqueue.pop(0)
+
+            a.callback()
 
     def ListenOn(self, host, port):
         self.__host = host
@@ -168,9 +206,8 @@ class nServer(threading.Thread):
                         
                         # Login the user, send a response
                         if theId == mp.M_LOGIN:
-                            newCon = self.__connections.Create(addr, buf.player)
+                            newCon = self.__connections.Create(addr, buf.player, self)
                             newCon.Login(buf)
-                            print "User " + buf.player + " has logged in."
                             
                         continue
                 
@@ -186,12 +223,12 @@ class nServer(threading.Thread):
                     # Ignore login requests from users already logged in
                     pass
                 elif theId == mp.M_LOGOUT:
-                    print "User " + con.player() + " has logged out."
-                    # @todo Add the callback for calling into the game so the game can respond to logouts.
+                    cb = self.GetCallback('logout', [time.time(), con] )
+                    self.AppendCallback(cb)
+
                     self.__connections.Remove(con)
                 else:
                     # Delegate to the connection objects to handle everything else.
-                    print buf
                     con.AddIncoming(buf)
             
             # Maintain connections.  At this point, all that the connections will do is queue up their
@@ -222,8 +259,9 @@ class nServer(threading.Thread):
             
             # Look for timeout connections and remove them
             for a in self.__connections.GetStatus(connection.C_TIMEOUT):
-                print "User " + con.player() + " has timed out."
-                # @todo Add the callback for calling into the game so the game can respond to logouts.
+                cb = self.GetCallback('timeout', [time.time(), a.player() ] )
+                self.AppendCallback(cb)
+                
                 self.__connections.Remove(con)
                 
             

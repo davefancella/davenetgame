@@ -77,6 +77,9 @@ class nConnection(object):
     ## The user's name for this connection
     __player = None
     
+    ## The server object, used for the callback interface.
+    __server = None
+    
     ## The list of outgoing messages to this connection.
     __outgoing = None
     
@@ -103,11 +106,21 @@ class nConnection(object):
     ## Local copy of the pedia
     __pedia = None
     
+    ## Time intervals for messages that were acked.  The server uses this to calculate the client's ping.
+    __msgintervals = None
+    
+    ## The ping, as a float, for the connection.  This is calculated by taking an average of the time it took
+    #  for a message to be acked, and only concerns messages that have been acked.  It could be a spurious value
+    #  in more serious packet loss situations.
+    #  @todo: make this calculation take into account packet loss.
+    __conping = None
+    
     ## When you instantiate an nConnection, you must give it a host and port.  There's
     #  no such thing as a connection without one.
-    def __init__(self, host, port, player):
+    def __init__(self, host, port, player, server):
         global C_OK, C_SILENT, C_TIMINGOUT, C_TIMEOUT
         
+        self.__server = server
         self.__host = host
         self.__port = port
         self.__player = player
@@ -125,7 +138,11 @@ class nConnection(object):
         self.__pinglist = []
         self.__acklist = []
         
+        self.__msgintervals = []
+        
         self.__lock = threading.RLock()
+        
+        self.__conping = 0.0
         
     ## The id for this connection
     def id(self):
@@ -134,6 +151,16 @@ class nConnection(object):
     ## Returns the current status of the connection
     def Status(self):
         return self.__status
+    
+    ## Returns the connection ping
+    def GetConnectionPing(self):
+        return self.__conping
+        
+    ## Updates the connection.  This is separate from the maintain call.  The maintain call is in the server thread,
+    #  while update is called from the main thread.  This is used to pump the callback list and get the callbacks
+    #  called.
+    def Update(self, timestep):
+        pass
         
     ## All of the logic for maintaining a connection is kept here, but the actual message sending isn't
     #  handled here.  The timestep parameter should be a timestamp from the server.  This runs in the
@@ -167,27 +194,48 @@ class nConnection(object):
                         if x[0] == replyId:
                             # This means we've received a ping ack, and treat it as though we've pinged.
                             pingAcked = True
+                            
+                            pingInterval = timestep - x[1]
+                            
+                            self.__msgintervals.append(pingInterval)
                         else:
                             # If this ping isn't acked, keep it in the list
-                            #cleaned_list.append(x)
-                            pass
+                            cleaned_list.append(x)
                     self.__pinglist = cleaned_list
+                    cleaned_list = []
+                    # Now do the same thing, looking through non-ping messages.
+                    # @todo: make this actually work
+                    for x in self.__acklist:
+                        if x[0] == replyId:
+                            # We actually treat every ack we receive as evidence of a healthy connection, and
+                            # update accordingly.
+                            pingAcked = True
+                            
+                            # Here is where the stuff goes for calculating ping                            
+                            pingInterval = timestep - x[1]
+                            
+                            self.__msgintervals.append(pingInterval)
+                        else:
+                            # If this message isn't acked, keep it in the list
+                            cleaned_list.append(x)
+                    self.__acklist = cleaned_list
                 if pingAcked:
                     self.__lastping = timestep
             else:
-                #ackList.append(msg.id)
-                pass
+                ackList.append(msg.id)
+                #pass
         
         self.__lock.release()
             
-        # Now, ack all the messages that were received
+        # Now, ack all the messages that were received and aren't acks.  Don't ack an ack!
+        # ackList is built above from messages that aren't acks and get mostly ignored above.
         if len(ackList) > 0:
             Nmsg = self.__pedia.GetMessageType(mp.M_ACK)()
             Nmsg.mtype = mp.M_ACK
             for nid in ackList:
                 Nmsg.replied.append(nid)
             
-            #self.AddOutgoing(Nmsg)
+            self.AddOutgoing(Nmsg)
         
         # Make sure the acklist is empty after this point
         ackList = None
@@ -215,14 +263,27 @@ class nConnection(object):
         elif (timeinterval >= 30.0):
             self.__status = C_TIMEOUT
     
+        # Calculate the connection's ping and store it, after first filtering out intervals that won't be used this time.
+        while len(self.__msgintervals) > 10:
+            self.__msgintervals.pop(0)
+        
+        # Avoid a division by zero error that should never happen
+        if len(self.__msgintervals) > 0:
+            self.__conping = sum(self.__msgintervals)/len(self.__msgintervals)
+    
     ## Tell the connection to login, which at this time consists of sending an ack to the connected
     #  client and starting connection maintenance.
     def Login(self, loginPacket):
+        # Send the ack.
         msg = self.__pedia.GetMessageType(mp.M_ACK)()
         msg.mtype = mp.M_ACK
         msg.replied.append(loginPacket.id)
         
         self.AddOutgoing(msg)
+        
+        # Create the callback.
+        cb = self.__server.GetCallback('login', [time.time(), self] )
+        self.__server.AppendCallback(cb)
     
     ## Pings the other side
     def Ping(self, timestep):
@@ -331,9 +392,9 @@ class nConnectionList(object):
         return len(self.__connections)
         
     ## Create a new connection that points to the address given by address.
-    def Create(self, address, player):
+    def Create(self, address, player, server):
         if address not in self.__connections:
-            newCon = nConnection(address[0], address[1], player)
+            newCon = nConnection(address[0], address[1], player, server)
             self.append(newCon)
             
             return newCon
@@ -375,6 +436,11 @@ class nConnectionList(object):
     def maintain(self, timestep):
         for a in self.__connections:
             a.maintain(timestep)
+
+    ## Called by the main thread to update connections.  This is mostly needed to implement the callback interface.
+    def Update(self, timestep):
+        for a in self.__connections:
+            a.Update(timestep)
 
     ## Returns true if any connection has outgoing messages to send
     def HasOutgoing(self):

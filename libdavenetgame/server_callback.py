@@ -30,6 +30,7 @@ import readline
 
 from libdavenetgame import server
 from libdavenetgame import connection
+from libdavenetgame import callback
  
 ## This class implements the basic server callback object.  You should inherit this class and add methods
 #  as needed to respond to callbacks.  The callbacks themselves will come from within the same thread as
@@ -41,6 +42,7 @@ class ServerCallback(object):
     __console = None
     __server = None
     __consolecommands = None
+    __callbacks = None
  
     ## Constructor.  Pass it a dictionary with any of the following keys to initialize them:
     #      host : the host that will be listened to by the socket.
@@ -52,6 +54,8 @@ class ServerCallback(object):
         self.__console = ConsoleInput()
         self.__name = "Test Server"
         self.__consolecommands = []
+        
+        self.__callbacks = []
         
         if args.has_key('host'):
             self.SetHost(args['host'])
@@ -65,9 +69,37 @@ class ServerCallback(object):
         self.RegisterCommand('help', self.consoleHelp, "help [command]", "Print this helpful text.  Alternately, type in a command to see its helpful text.")
         self.RegisterCommand('quit', self.consoleQuit, "quit", "Quit the server.")
 
+        self.RegisterCallback('login', self.cbLogin)
+        self.RegisterCallback('logout', self.cbLogout)
+        self.RegisterCallback('timeout', self.cbTimeout)
+
     ## Call to set the host that the server will listen on.
     def SetHost(self, host):
         self.__host = host
+
+    ## This callback is called when a user has successfully logged in.  Default implementation just prints to stdout.
+    def cbLogin(self, timestep, connection):
+        print "User " + connection.player() + " has logged in."
+
+    def cbLogout(self, timestep, connection):
+        print "User " + connection.player() + " has logged out."
+
+    def cbTimeout(self, timestep, playername):
+        print "User " + playername + " has timed out."
+
+    ## Register a callback.  Games *can* use this, but the mechanism isn't terribly useful.  For the most part,
+    #  simply implement the required callback methods in this class to receive callbacks.  Required callbacks will
+    #  throw an exception.
+    def RegisterCallback(self, name, func):
+        class_name = name.capitalize() + "Callback"
+        class_ = getattr(callback, class_name)(callback=func)
+
+        self.__callbacks.append(class_)
+
+    ## This method is called after the server is started to register all the callbacks that will be used.
+    def __setupCallbacks(self):
+        for cb in self.__callbacks:
+            self.__server.RegisterCallback( cb )
 
     ## Console command: show
     def consoleShow(self, *args):
@@ -79,7 +111,10 @@ class ServerCallback(object):
                     print "There are no connections at this time."
                 else:
                     for a in self.__server.GetConnectionList():
-                        print "%3s: %40s  %10s" % (a.id(), str(a), connection.statuslist[a.Status()][1] )
+                        print "%3s: %40s  %10s %4s" % (a.id(), 
+                                                       str(a), 
+                                                       connection.statuslist[a.Status()][1],
+                                                       int(a.GetConnectionPing() * 1000) )
             else:
                 print "Unknown thing to show: " + args[0]
     
@@ -133,6 +168,8 @@ class ServerCallback(object):
     def StartServer(self):
         self.__console.Start()
         self.__server = server.nServer()
+        self.__setupCallbacks()
+        
         self.__server.ListenOn(self.__host, self.__port)
 
         self.__server.Start()
@@ -169,7 +206,10 @@ class ServerCallback(object):
                 if not foundcommand:
                     print "Command not recognized: " + command
                 
-        except exceptions.KeyboardInterrupt:
+            # Update the server.  This is where the callbacks will get called.
+            self.__server.Update(timestep)
+                
+        except KeyboardInterrupt:
             print "Quitting due to keyboard interrupt"
         
 ## This class implements console commands.  To create a new console command, simply make an instance of
