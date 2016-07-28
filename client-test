@@ -22,8 +22,8 @@
 
 '''
 
-import socket   #for sockets
-import sys  #for exit
+import socket
+import sys
 from libdavenetgame import exceptions
 import getpass # for convenience
 
