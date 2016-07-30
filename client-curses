@@ -23,7 +23,7 @@
 '''
 
 import socket
-import sys
+import sys, traceback
 from libdavenetgame import exceptions
 import getpass # for convenience
 
@@ -32,94 +32,146 @@ import readline
 from libdavenetgame import client_callback
 from libdavenetgame.messages import pedia
 
-
-
 import curses
 
-# C code follows that needs to be translated to python
+startx = 0
+starty = 0
 
-int startx = 0;
-int starty = 0;
-
-char *choices[] = { 
-            "Choice 1",
+choices = [ 
+            "My other world is just a half a mile away",
             "Choice 2",
             "Choice 3",
             "Choice 4",
             "Exit",
-          };
-int n_choices = sizeof(choices) / sizeof(char *);
-void print_menu(WINDOW *menu_win, int highlight);
+]
 
-int main()
-{   WINDOW *menu_win;
-    int highlight = 1;
-    int choice = 0;
-    int c;
+def main(mainscr):
+    global startx, starty, choices
+    
+    rooty, rootx = mainscr.getmaxyx()
 
-    initscr();
-    clear();
-    noecho();
-    cbreak();   /* Line buffering disabled. pass on everything */
-    startx = (80 - WIDTH) / 2;
-    starty = (24 - HEIGHT) / 2;
+    choice = enter_menu(rootx, rooty)
+    
+    mainscr.clrtoeol()
+    mainscr.refresh()
+    
+    return 0
+
+def enter_menu(rootx, rooty):
+    global choices
+
+    menu_win = None
+    highlight = 1
+    choice = 0
+    c = None
+
+    # Compute longest choice so we can size the menu accordingly
+    longestChoice = 0
+    for a in choices:
+        if len(a) > longestChoice:
+            longestChoice = len(a)
+            
+    # Add appropriate padding to the size of the choices to allow for border decorations.  Unlike in html, border decorations
+    # will be inside the padding, so the padding must always be at least 1.
+    x_padding = 4
+    y_padding = 1
+    
+    x_itemDisplaySize = longestChoice + 2 * x_padding
+    y_itemDisplaySize = len(choices) + 2 * y_padding
+    
+    x_loc = (rootx - x_itemDisplaySize)/2
+    y_loc = (rooty - y_itemDisplaySize)/2
+
+    menu_win = curses.newwin(y_itemDisplaySize, x_itemDisplaySize, y_loc, x_loc)
+    menu_win.keypad(True)
+    
+    keepGoing = True
+    
+    print_menu(menu_win, highlight, choices, len(choices), y_padding, longestChoice, x_padding)
+    
+    while(keepGoing):
+        c = menu_win.getch()
+        if c == curses.KEY_UP:
+            if(highlight == 1):
+                highlight = len(choices)
+            else:
+                highlight -= 1
+        elif c == curses.KEY_DOWN:
+            if(highlight == len(choices)):
+                highlight = 1
+            else:
+                highlight += 1
+        elif c == 10:
+            choice = highlight
+        else:
+            #mainscr.addstr(24, 0, "Character pressed is = %3d Hopefully it can be printed as '%c'" % (c, c) )
+            mainscr.refresh()
         
-    menu_win = newwin(HEIGHT, WIDTH, starty, startx);
-    keypad(menu_win, TRUE);
-    mvprintw(0, 0, "Use arrow keys to go up and down, Press enter to select a choice");
-    refresh();
-    print_menu(menu_win, highlight);
-    while(1)
-    {   c = wgetch(menu_win);
-        switch(c)
-        {   case KEY_UP:
-                if(highlight == 1)
-                    highlight = n_choices;
-                else
-                    --highlight;
-                break;
-            case KEY_DOWN:
-                if(highlight == n_choices)
-                    highlight = 1;
-                else 
-                    ++highlight;
-                break;
-            case 10:
-                choice = highlight;
-                break;
-            default:
-                mvprintw(24, 0, "Charcter pressed is = %3d Hopefully it can be printed as '%c'", c, c);
-                refresh();
-                break;
-        }
-        print_menu(menu_win, highlight);
-        if(choice != 0) /* User did a choice come out of the infinite loop */
-            break;
-    }   
-    mvprintw(23, 0, "You chose choice %d with choice string %s\n", choice, choices[choice - 1]);
-    clrtoeol();
-    refresh();
-    endwin();
-    return 0;
-}
+        print_menu(menu_win, highlight, choices, len(choices), y_padding, longestChoice, x_padding)
+        
+        if(choice != 0): # User did a choice come out of the infinite loop
+            keepGoing = False
+            
+    return choice
 
 
-void print_menu(WINDOW *menu_win, int highlight)
-{
-    int x, y, i;    
+def print_menu(menu_win, highlight, choices, y_menuSize, y_padding, x_menuSize, x_padding):
+    size_y, size_x = menu_win.getmaxyx()
+    
+    # Make room for the border
+    x_padding -= 2
+    x_offset = 1 + x_padding/2
+    
+    y_padding -= 2
+    y_offset = 1 + y_padding/2
+    
+    x = x_offset
+    y = y_offset + 1
+    
+    menu_win.border( 0, 0, 0, 0)
+    
+    for i in range(len(choices) ):
+        if(highlight == (i + 1) ): # High light the present choice
+            menu_win.addstr(y, x, choices[i], curses.A_REVERSE)
+        else:
+            menu_win.addstr(y, x, choices[i])
+        y += 1
+    
+    menu_win.refresh()
 
-    x = 2;
-    y = 2;
-    box(menu_win, 0, 0);
-    for(i = 0; i < n_choices; ++i)
-    {   if(highlight == i + 1) /* High light the present choice */
-        {   wattron(menu_win, A_REVERSE); 
-            mvwprintw(menu_win, y, x, "%s", choices[i]);
-            wattroff(menu_win, A_REVERSE);
-        }
-        else
-            mvwprintw(menu_win, y, x, "%s", choices[i]);
-        ++y;
-    }
-    wrefresh(menu_win);
-}
+if __name__ == "__main__":
+    mainscr = curses.initscr()
+    
+    # Save the current state of the terminal.  We'll catch exceptions and re-raise them, but we need to
+    # restore the terminal when we do so.
+    curses.def_shell_mode()
+    
+    #curses.clear()
+    curses.noecho()
+    curses.cbreak()   # Line buffering disabled. pass on everything
+    
+    hasException = False
+    
+    try:
+        main(mainscr)
+    except:
+        hasException = True
+    finally:
+        curses.endwin()
+        curses.reset_shell_mode()
+    
+    if hasException:
+        print "Exception in user code:"
+        print '-'*60
+        traceback.print_exc(file=sys.stdout)
+        print '-'*60
+    
+    
+    
+    
+    
+
+
+
+
+
