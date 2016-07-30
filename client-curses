@@ -73,8 +73,8 @@ def enter_menu(rootx, rooty):
             
     # Add appropriate padding to the size of the choices to allow for border decorations.  Unlike in html, border decorations
     # will be inside the padding, so the padding must always be at least 1.
-    x_padding = 4
-    y_padding = 1
+    x_padding = 8
+    y_padding = 2
     
     x_itemDisplaySize = longestChoice + 2 * x_padding
     y_itemDisplaySize = len(choices) + 2 * y_padding
