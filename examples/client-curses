@@ -34,32 +34,36 @@ from libdavenetgame.messages import pedia
 
 import curses
 
-startx = 0
-starty = 0
-
-choices = [ 
-            "My other world is just a half a mile away",
-            "Choice 2",
-            "Choice 3",
-            "Choice 4",
+mainMenu = [ 
+            "Play Game",
+            "Internet Game",
             "Exit",
 ]
 
 def main(mainscr):
-    global startx, starty, choices
+    global mainMenu
     
     rooty, rootx = mainscr.getmaxyx()
 
-    choice = enter_menu(rootx, rooty)
+    choice = enter_menu(rootx, rooty, mainMenu)
+    
+    if choice == 0:
+        pass
+    elif choice == 1:
+        pass
+    elif choice == 2:
+        pass
+    else:
+        pass
     
     mainscr.clrtoeol()
     mainscr.refresh()
     
     return 0
 
-def enter_menu(rootx, rooty):
-    global choices
-
+def enter_menu(rootx, rooty, menu):
+    choices = menu
+    
     menu_win = None
     highlight = 1
     choice = 0

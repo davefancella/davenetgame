@@ -245,7 +245,8 @@ class nServer(threading.Thread):
                         # Only assign an id if an id hasn't already been assigned
                         if msg.id == 0:
                             msg.id = mp.get_id()
-                        msg.mtype = self.__pedia.GetTypeID(msg)
+                        theMType = self.__pedia.GetTypeID(msg)
+                        msg.mtype = theMType
                         payload = msg.SerializeToString()
                         
                         # Encode the message
