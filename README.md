@@ -1,6 +1,6 @@
 # Introduction
 Dave's Stupid Game Network Library is a python-based network library optimized for games.  To use it,
-you simple write your server and client in python, inherit the client_callback and server_callback classes,
+you simple write your server and client in python, inherit the ClientCallback and ServerCallback classes,
 and implement any callbacks you wish to.
 
 # Disclaimer
