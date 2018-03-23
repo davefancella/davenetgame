@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 '''
 
@@ -128,9 +128,9 @@ class nClient(threading.Thread):
                 # Datagram (udp) socket
                 try :
                     self.__socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-                    print 'Socket created'
-                except socket.error, msg :
-                    print 'Failed to create socket. Error Code : ' + str(msg[0]) + ' Message ' + msg[1]
+                    print('Socket created')
+                except OSError as msg:
+                    print('Failed to create socket. Error Code : ' + str(msg[0]) + ' Message ' + msg[1] )
                     error = True
                 
             else:

@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 '''
 
@@ -34,14 +34,14 @@ from davenetgame.messages import pedia
 try:
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 except socket.error:
-    print 'Failed to create socket'
+    print('Failed to create socket')
     sys.exit()
  
 host = 'localhost'
 port = 8888
 name = getpass.getuser()
 
-print "Starting test client."
+print("Starting test client.")
 
 ## Help text for commands.
 commands = {
@@ -56,7 +56,7 @@ commands = {
                'desc'  : "Log out from the server.  You must be connected for this to work."
               },
     'help' : { 'usage' : "help [command]",
-              'desc'  : "Print this helpful text.  Alternately, type in a command to see its helpful text." },
+              'desc'  : "print(this helpful text.  Alternately, type in a command to see its helpful text." },
     'status' : { 'usage' : "status",
               'desc'  : "Display the status of the current connection." },
     'quit' : { 'usage' : "quit",
@@ -70,15 +70,15 @@ def Help(command=None):
     
     if command is not None:
         if commands.has_key(command):
-            print "%10s : %s" % (command, commands[command]["desc"])
-            print "%13s %s" % (" ", commands[command]['usage'])
+            print("%10s : %s" % (command, commands[command]["desc"]) )
+            print("%13s %s" % (" ", commands[command]['usage']) )
             print
         else:
-            print "Command not found."
+            print("Command not found.")
     else:
         for key, value in commands.iteritems():
-            print "%10s : %s" % (key, value["desc"] )
-            print "%13s %s" % (" ", value['usage'] )
+            print("%10s : %s" % (key, value["desc"] ) )
+            print("%13s %s" % (" ", value['usage'] ) )
             print
 
 theClient = None
@@ -87,7 +87,7 @@ keepGoing = True
 
 try:
     while(keepGoing) :
-        msg = raw_input('')
+        msg = input('')
         
         args = msg.split(" ")
         
@@ -101,7 +101,7 @@ try:
         
         if command == "set":
             if len(args) != 2:
-                print "Usage: set (host|port|name) value"
+                print("Usage: set (host|port|name) value")
             else:
                 if args[0].lower() == "host":
                     host = args[1]
@@ -124,9 +124,9 @@ try:
                             theClient.SetPort(port)
                             theClient.Start()
                 else:
-                    print "You must specify a port to connect to"
+                    print("You must specify a port to connect to")
             else:
-                print "You must specify a host to connect to"
+                print("You must specify a host to connect to")
         elif command == "logout":
             theClient.Stop()
             theClient = None
@@ -142,26 +142,26 @@ try:
                 Help(args[0])
         elif command == "ping":
             if theClient is None:
-                print "You must be connected to a server to ping!"
+                print("You must be connected to a server to ping!")
             else:
                 theClient.SendPing()
         elif command == "status":
             if theClient is None:
-                print "You are not connected to a server."
+                print("You are not connected to a server.")
             else:
-                print theClient.StatusString()
-                print "Bytes received: " + str(theClient.BytesReceived() )
-                print "Bytes sent: " + str(theClient.BytesSent() )
-                print "Bytes transferred: " + str(theClient.Bandwidth() )
+                print(theClient.StatusString() )
+                print("Bytes received: " + str(theClient.BytesReceived() ) )
+                print("Bytes sent: " + str(theClient.BytesSent() ) )
+                print("Bytes transferred: " + str(theClient.Bandwidth() ) )
         else:
-            print "Command not recognized."
+            print("Command not recognized.")
             
 except KeyboardInterrupt:
-    print "Quitting due to keyboard interrupt"
+    print("Quitting due to keyboard interrupt")
 
 if theClient is not None:
     theClient.Stop()
-print
+print()
 
 
 

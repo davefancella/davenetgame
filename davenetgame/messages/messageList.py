@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 '''
 
@@ -58,19 +58,19 @@ noLogin = [
 ml = {}
 
 ## Login messages
-import login_pb2
+from davenetgame.messages import login_pb2
 ml[M_LOGIN] = login_pb2.Login
 ml[M_LOGIN_S] = M_LOGIN
 ml[M_LOGOUT] = login_pb2.Logout
 ml[M_LOGOUT_S] = M_LOGOUT
 
 ## Ack message
-import ack_pb2
+from davenetgame.messages import ack_pb2
 ml[M_ACK] = ack_pb2.Ack
 ml[M_ACK_S] = M_ACK
 
 ## Ping messages
-import ping_pb2
+from davenetgame.messages import ping_pb2
 ml[M_PING] = ping_pb2.Ping
 ml[M_PING_S] = M_PING
 

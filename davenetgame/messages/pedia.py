@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 '''
 
@@ -73,7 +73,7 @@ def getPedia():
 ## This is where the messageList is setup, but the actual types are handled in the messageList module, which
 #  should only ever be imported here.
 if messageList is None:
-    import messageList
+    from davenetgame.messages import messageList
     
     theMessages = getPedia()
     theMessages.SetList(messageList.ml)
