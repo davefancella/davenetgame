@@ -25,7 +25,7 @@ print "Building Dave's Stupid Network Game Library"
 print
 print "Building protocol files"
 
-#cd ./libdavenetgame/messages
+#cd ./davenetgame/messages
 #pwd
 
 #for a in *.proto

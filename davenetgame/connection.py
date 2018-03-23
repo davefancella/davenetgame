@@ -22,9 +22,9 @@ import time
 
 import threading
 
-from libdavenetgame.messages import pedia
+from davenetgame.messages import pedia
 ## Use mp to access the constants and lists in messageList
-from libdavenetgame.messages import messageList as mp
+from davenetgame.messages import messageList as mp
 
 ## These are constants associated with connections.  They generally give the status of the connection.
 C_OK = 0

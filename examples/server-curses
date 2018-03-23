@@ -23,7 +23,7 @@ import time, exceptions
 
 import readline
 
-from libdavenetgame import server_callback
+from davenetgame import server_callback
  
 HOST = ''   # Symbolic name meaning all available interfaces
 PORT = 8888 # Arbitrary non-privileged port

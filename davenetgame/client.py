@@ -26,9 +26,9 @@ import threading
 import select, time
 import struct
 
-from libdavenetgame.messages import pedia
-from libdavenetgame import connection
-from libdavenetgame.messages import messageList as mp
+from davenetgame.messages import pedia
+from davenetgame import connection
+from davenetgame.messages import messageList as mp
 
 ## This class implements the game server network layer.
 class nClient(threading.Thread):

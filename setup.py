@@ -26,15 +26,15 @@
 
 from distutils.core import setup
 
-setup(name="libdavenetgame",
+setup(name="davenetgame",
       version='1.0',
       description="Dave's Stupid Network Game Library is a network library designed for games, written in pure python.",
       author='Dave Fancella',
       author_email='dave@davefancella.com',
       url='http://www.davefancella.com/',
       packages=[
-                'libdavenetgame',
-                'libdavenetgame/messages',
+                'davenetgame',
+                'davenetgame/messages',
                 ],
      )
 

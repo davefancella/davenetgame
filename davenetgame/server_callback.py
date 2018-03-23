@@ -24,9 +24,9 @@ import threading
 
 import readline
 
-from libdavenetgame import server
-from libdavenetgame import connection
-from libdavenetgame import callback
+from davenetgame import server
+from davenetgame import connection
+from davenetgame import callback
  
 ## This class implements the basic server callback object.  You should inherit this class and add methods
 #  as needed to respond to callbacks.  The callbacks themselves will come from within the same thread as
@@ -34,7 +34,7 @@ from libdavenetgame import callback
 #
 #  To start a basic server, you'd do something like this:
 #  ~~~~~~~~~~~~~{.py}
-#  from libdavenetgame import server_callback
+#  from davenetgame import server_callback
 #   
 #  HOST = ''   # Symbolic name meaning all available interfaces
 #  PORT = 8888 # Arbitrary non-privileged port

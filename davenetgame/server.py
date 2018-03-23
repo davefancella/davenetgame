@@ -27,10 +27,10 @@ import threading
 import select, time
 import struct
 
-from libdavenetgame import connection
-from libdavenetgame.messages import pedia
+from davenetgame import connection
+from davenetgame.messages import pedia
 ## Use mp to access the constants and lists in messageList
-from libdavenetgame.messages import messageList as mp
+from davenetgame.messages import messageList as mp
 
 ## This class implements the game server network layer.
 class nServer(threading.Thread):

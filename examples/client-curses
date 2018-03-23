@@ -20,13 +20,13 @@
 
 import socket
 import sys, traceback
-from libdavenetgame import exceptions
+from davenetgame import exceptions
 import getpass # for convenience
 
 import readline
 
-from libdavenetgame import client_callback
-from libdavenetgame.messages import pedia
+from davenetgame import client_callback
+from davenetgame.messages import pedia
 
 import curses
 

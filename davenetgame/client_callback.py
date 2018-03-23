@@ -20,8 +20,8 @@
 
 import getpass # for convenience
 
-from libdavenetgame import client
-from libdavenetgame import connection
+from davenetgame import client
+from davenetgame import connection
 
 class ClientCallback(object):
     __host = None

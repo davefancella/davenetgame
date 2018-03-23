@@ -28,12 +28,12 @@ echo
 case $1 in
     "clean")
         echo "Deleting protobuf generated files..."
-        find ./libdavenetgame -name "*_pb2.py" -print0 | xargs -0 rm -rf
+        find ./davenetgame -name "*_pb2.py" -print0 | xargs -0 rm -rf
         echo "Deleting python byte-compiled files..."
-        find ./libdavenetgame -name "*.pyc" -print0 | xargs -0 rm -rf
+        find ./davenetgame -name "*.pyc" -print0 | xargs -0 rm -rf
         ;;
     "build")
-        cd ./libdavenetgame/messages
+        cd ./davenetgame/messages
         pwd
         echo "Building protocol files"
         for a in *.proto

@@ -18,7 +18,7 @@
 
 '''
 
-from libdavenetgame import exceptions
+from davenetgame import exceptions
 
 ## This class stores attributes that will be synced over the network.
 class nSyncAttribute(object):
