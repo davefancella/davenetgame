@@ -179,7 +179,7 @@ def InitializePaths(appDirName, thePaths):
     # Now we need to iterate through the caller's paths and set each of them
     # up in _allpaths
     templist = []
-    for key, value in thePaths.iteritems():
+    for key, value in thePaths.items():
         templist.append( [key, value.split("/") ] )
 
     # We have to iterate this way so the caller can have dependencies on previous

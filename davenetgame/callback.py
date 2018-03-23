@@ -36,7 +36,7 @@ class Callback(object):
     __args = None
     
     def __init__(self, **args):
-        if args.has_key('callback'):
+        if 'callback' in args:
             self.__callback = args['callback']
         
         self.__name = args['name']

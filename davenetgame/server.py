@@ -138,21 +138,21 @@ class nServer(threading.Thread):
                 # Datagram (udp) socket
                 try :
                     self.__socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-                    print 'Socket created'
-                except socket.error, msg :
-                    print 'Failed to create socket. Error Code : ' + str(msg[0]) + ' Message ' + msg[1]
+                    print('Socket created')
+                except OSError as msg :
+                    print('Failed to create socket. Error Code : ' + str(msg[0]) + ' Message ' + msg[1])
                     error = True
                 
                 # Bind socket to local host and port
                 try:
                     self.__socket.bind((self.__host, self.__port))
-                except socket.error , msg:
-                    print 'Bind failed. Error Code : ' + str(msg[0]) + ' Message ' + msg[1]
+                except OSError as msg:
+                    print('Bind failed. Error Code : ' + str(msg[0]) + ' Message ' + msg[1])
                     error = True
                 if error is False:
-                    print 'Socket bind complete'
+                    print('Socket bind complete')
                 else:
-                    print "An error occured creating the socket"
+                    print("An error occured creating the socket")
             else:
                 # Raise an exception indicating no port was given
                 pass

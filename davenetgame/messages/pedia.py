@@ -43,7 +43,7 @@ class Messages(object):
     def GetMessageType(self, theType):
         retType = None
         
-        if self.__messageList.has_key(theType):
+        if theType in self.__messageList:
             retType = self.__messageList[theType]
             if type(theType) == str:
                 retType = self.__messageList[retType]
@@ -52,7 +52,7 @@ class Messages(object):
         
     ## Gets a type ID for the message being sent
     def GetTypeID(self, msg):
-        for key, value in self.__messageList.iteritems():
+        for key, value in self.__messageList.items():
             if type(msg) == value:
                 return key
         

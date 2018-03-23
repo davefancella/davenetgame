@@ -20,7 +20,7 @@
 '''
 
 from time import sleep
-import time, exceptions
+import time
 
 import readline
 
@@ -41,10 +41,10 @@ try:
     while(keepGoing) :
         theServer.Update(time.time() )
         
-except exceptions.KeyboardInterrupt:
-    print "Quitting due to keyboard interrupt"
+except KeyboardInterrupt:
+    print("Quitting due to keyboard interrupt")
 
 theServer.Stop()
-print
+print()
 
 

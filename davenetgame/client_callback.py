@@ -34,9 +34,9 @@ class ClientCallback(object):
         self.__port = 8888
         self.__name = getpass.getuser()
         
-        if args.has_key('host'):
+        if 'host' in args:
             self.SetHost = args['host']
-        if args.has_key('port'):
+        if 'port' in args:
             self.SetPort = args['port']
             
     def SetHost(self, host):

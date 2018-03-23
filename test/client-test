@@ -69,14 +69,14 @@ def Help(command=None):
     global commands
     
     if command is not None:
-        if commands.has_key(command):
+        if command in commands:
             print("%10s : %s" % (command, commands[command]["desc"]) )
             print("%13s %s" % (" ", commands[command]['usage']) )
             print
         else:
             print("Command not found.")
     else:
-        for key, value in commands.iteritems():
+        for key, value in commands.items():
             print("%10s : %s" % (key, value["desc"] ) )
             print("%13s %s" % (" ", value['usage'] ) )
             print

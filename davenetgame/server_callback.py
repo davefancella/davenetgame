@@ -18,7 +18,7 @@
 
 '''
 
-import sys, exceptions
+import sys
 from time import sleep
 import threading
 
@@ -48,8 +48,8 @@ from davenetgame import callback
 #      while(keepGoing) :
 #          theServer.Update(time.time() )
 #          
-#  except exceptions.KeyboardInterrupt:
-#      print "Quitting due to keyboard interrupt"
+#  except KeyboardInterrupt:
+#      print("Quitting due to keyboard interrupt")
 #  
 #  theServer.Stop()
 #  ~~~~~~~~~~~~~
@@ -83,16 +83,16 @@ class ServerCallback(object):
         
         self.__callbacks = []
         
-        if args.has_key('host'):
+        if 'host' in args:
             self.SetHost(args['host'])
-        if args.has_key('port'):
+        if 'port' in args:
             self.SetPort(args['port'] )
-        if args.has_key('name'):
+        if 'name' in args:
             self.SetName(args['name'])
 
         # Register the standard commands available to every game server.
         self.RegisterCommand('show', self.consoleShow, "show (connections)", "Show whatever you want to see.")
-        self.RegisterCommand('help', self.consoleHelp, "help [command]", "Print this helpful text.  Alternately, type in a command to see its helpful text.")
+        self.RegisterCommand('help', self.consoleHelp, "help [command]", "print(this helpful text.  Alternately, type in a command to see its helpful text.")
         self.RegisterCommand('quit', self.consoleQuit, "quit", "Quit the server.")
 
         self.RegisterCallback('login', self.cbLogin)
@@ -105,13 +105,13 @@ class ServerCallback(object):
 
     ## This callback is called when a user has successfully logged in.  Default implementation just prints to stdout.
     def cbLogin(self, timestep, connection):
-        print "User " + connection.player() + " has logged in."
+        print("User " + connection.player() + " has logged in.")
 
     def cbLogout(self, timestep, connection):
-        print "User " + connection.player() + " has logged out."
+        print("User " + connection.player() + " has logged out.")
 
     def cbTimeout(self, timestep, playername):
-        print "User " + playername + " has timed out."
+        print("User " + playername + " has timed out.")
 
     ## Register a callback.  Games *can* use this, but the mechanism isn't terribly useful.  For the most part,
     #  simply implement the required callback methods in this class to receive callbacks.  Required callbacks will
@@ -130,35 +130,35 @@ class ServerCallback(object):
     ## Console command: show
     def consoleShow(self, *args):
         if len(args) != 1:
-            print "Usage: show (connections)"
+            print("Usage: show (connections)")
         else:
             if args[0] == "connections":
                 if len(self.__server.GetConnectionList() ) == 0:
-                    print "There are no connections at this time."
+                    print("There are no connections at this time.")
                 else:
                     for a in self.__server.GetConnectionList():
-                        print "%3s: %40s  %10s %4s" % (a.id(), 
+                        print("%3s: %40s  %10s %4s" % (a.id(), 
                                                        str(a), 
                                                        connection.statuslist[a.Status()][1],
-                                                       int(a.GetConnectionPing() * 1000) )
+                                                       int(a.GetConnectionPing() * 1000) ))
             else:
-                print "Unknown thing to show: " + args[0]
+                print("Unknown thing to show: " + args[0])
     
     ## Console command: help
     def consoleHelp(self, *args):
         if len(args) > 0:
             for a in self.__consolecommands:
                 if a.command() == args[0]:
-                    print "%10s : %s" % (args[0], a.helplong() )
-                    print "%13s %s" % (" ", a.helpshort() )
+                    print("%10s : %s" % (args[0], a.helplong() ))
+                    print("%13s %s" % (" ", a.helpshort() ))
                     print
             else:
-                print "Command not found."
+                print("Command not found.")
         else:
             for a in self.__consolecommands:
-                print "%10s : %s" % (a.command(), a.helplong() )
-                print "%13s %s" % (" ", a.helpshort() )
-                print
+                print("%10s : %s" % (a.command(), a.helplong() ))
+                print("%13s %s" % (" ", a.helpshort() ))
+                print()
 
 
     ## Console command: quit
@@ -200,7 +200,7 @@ class ServerCallback(object):
 
         self.__server.Start()
 
-        print "Starting " + self.__name + "."
+        print("Starting " + self.__name + ".")
         
     ## Call to stop the server.  Stops the console as well.
     def Stop(self):
@@ -230,13 +230,13 @@ class ServerCallback(object):
                         foundcommand = True
                 
                 if not foundcommand:
-                    print "Command not recognized: " + command
+                    print("Command not recognized: " + command)
                 
             # Update the server.  This is where the callbacks will get called.
             self.__server.Update(timestep)
                 
         except KeyboardInterrupt:
-            print "Quitting due to keyboard interrupt"
+            print("Quitting due to keyboard interrupt")
         
 ## This class implements console commands.  To create a new console command, simply make an instance of
 #  this class, giving all the keyword arguments in the constructor.
@@ -309,7 +309,7 @@ class ConsoleInput(threading.Thread):
     ## Starts the console input.  Don't call this directly, instead call Start().
     def run(self):
         while self.__continue:
-            msg = raw_input('')
+            msg = input('')
             self.__lock.acquire()
             self.__pcommands.append(msg.strip() )
             self.__lock.release()
