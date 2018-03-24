@@ -28,9 +28,10 @@ from davenetgame import server
 from davenetgame import connection
 from davenetgame import callback
  
-## This class implements the basic server callback object.  You should inherit this class and add methods
-#  as needed to respond to callbacks.  The callbacks themselves will come from within the same thread as
-#  your game loop, so you will have to call update() on the callback object.
+## This class implements the basic server callback object.  You should inherit this class and 
+#  add methods as needed to respond to callbacks.  The callbacks themselves will come from 
+#  within the same thread as your game loop, so you will have to call update() on the 
+#  callback object.
 #
 #  To start a basic server, you'd do something like this:
 #  ~~~~~~~~~~~~~{.py}
@@ -54,12 +55,14 @@ from davenetgame import callback
 #  theServer.Stop()
 #  ~~~~~~~~~~~~~
 #
-#  For something a bit more advanced, you'd inherit ServerCallback, overload any methods you need, including any
-#  required methods, then simply call Update() from inside your game loop to update the server.  That gets your callbacks
-#  called, syncs game objects, and lets you continue running your simulation.
+#  For something a bit more advanced, you'd inherit ServerCallback, overload any methods you 
+#  need, including any required methods, then simply call Update() from inside your game loop 
+#  to update the server.  That gets your callbacks called, syncs game objects, and lets you 
+#  continue running your simulation.
 #
-#  The network layer itself runs in its own thread, and from there it maintains connections, pinging clients periodically,
-#  and sending/receiving all network messages.  Then it queues up the callbacks so that they can be safely run
+#  The network layer itself runs in its own thread, and from there it maintains connections, 
+#  pinging clients periodically, and sending/receiving all network messages.  Then it queues 
+#  up the callbacks, usually to specific connections, so that they can be safely run
 #  in your main thread.
 
 class ServerCallback(object):
