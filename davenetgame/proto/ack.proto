@@ -14,6 +14,8 @@
 
 // A general purpose ack.  This can acknowledge multiple packets, regardless of type, using the replied field.
 // The replied field should always contain at least one id for a packet being acked.
+syntax = "proto2";
+
 message Ack {
     required fixed32 id = 1;
     required fixed32 mtype = 2;

@@ -118,6 +118,10 @@ class nSyncObject(object):
     
     ## The ID of this object.  All network objects have unique IDs.
     _id = None
+    
+    ## The Type ID of this object.  All instances of each subclass will share the
+    #  Type id that's assigned to their subclass.
+    _typeid = None
 
     ## This init method should be called as soon as possible in subclasses so that an ID can be
     #  established.
@@ -130,6 +134,8 @@ class nSyncObject(object):
         theList = GetSyncList()
 
         self._id = theList.GetNextId()
+        
+        AddObjectType(self)
         
     ## Subclasses must call this after declaring all attributes and stuff in order to finish setting
     #  up the object.  Without this call, the object will not sync.
@@ -212,17 +218,67 @@ class nSyncList(object):
     def DeleteSyncObject(self, obj):
         pass
 
+## Call this function when you declare the class.  The library doesn't need to be
+#  initialized or anything for this function to work.  But before you can connect
+#  to anything, the game object list must know about every single possible class that
+#  will be synced.  The actual numbers will be arbitrarily assigned everytime the app
+#  is loaded, so the server has to sync with every client upon connection.
+#
+#  @param objType A type object representing the class.
+def RegisterGameObjectType(objType):
+    objList = GetGameObjectList()
+    
+    objList.AddObjectType(objType)
+    
+
+## Tracks and assigns numbers for each nSyncObject subclass.  It does absolutely
+#  nothing else.
+class nGameObjects(object):
+    ## Current high number for new type IDs
+    __currentid = None
+    
+    ## The dict of object types, keyed by name
+    __types = None
+    
+    def __init__(self):
+        self.__currentid = 1
+        self.__types = {}
+        
+    ## Adds a new type object to the list of available types and assigns an id to it.
+    #
+    #  @param newType the new type object to add.
+    #  @returns the new type id.  If the object is already in the list, returns the id
+    #                   previously assigned.
+    def AddObjectType(self, newType):
+        newTypeName = newType.__name__
+        
+        if newTypeName not in self.__types:
+            self.__types[newTypeName] = self.__currentid
+            self.__currentid = self.__currentid + 1
+            
+        return self.__types[newTypeName]
+
+__gameobjlist = None
+
 __synclist = None
 
 ## Returns the nSyncList object.  Used internally by the network library, should not be used by games.
 def GetSyncList():    
     global __synclist
 
-    if __synclist == None:
+    if __synclist = None:
         __synclist = nSyncList()
 
     return __synclist
 
+## Use this to get the global game object list
+def GetGameObjectList():
+    global __gameobjlist
+    
+    if __gameobjlist = None:
+        __gameobjlist = nGameObjects()
+        
+    return __gameobjlist
 
 
 

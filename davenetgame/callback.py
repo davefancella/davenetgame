@@ -24,9 +24,14 @@
 #  provide their own functions/methods to be called, but for the most part, inheriting nClientCallback and nServerCallback
 #  should be sufficient.
 
-## The base class for callback objects.  Derived classes should be named TypeCallback, where "Type" is a camelcase
-#  name, such as Login, Logout, Chat, etc.  The all lowercase string for type will be used internally to reference
-#  the callback.
+## The base class for callback objects.  Derived classes should be named TypeCallback, where 
+#  "Type" is a camelcase name, such as Login, Logout, Chat, etc.  The all lowercase string 
+#  for type will be used internally to reference the callback.
+#
+#  Regardless of where your callback will be called from, it will be passed a list of keyword
+#  arguments.  If your callback is used to process network messages, the arguments will be the
+#  actual members of the message.  In other situations, the callback arguments will be specified
+#  by the documentation for the appropriate situation.
 class Callback(object):
     ## The function that will be called.
     __callback = None
@@ -46,9 +51,10 @@ class Callback(object):
     def name(self):
         return self.__name
 
-    ## When the callback is queued, call this to set the arguments that it'll need when called.  It takes the argument
-    #  list for the function.
-    def setargs(self, *args):
+    ## When the callback is queued, call this to set the arguments that it'll need when called.
+    #  It takes a keyword list corresponding to the network message that's being responded to,
+    #  or the specific network event in the event that there's no network message associated.
+    def setargs(self, **args):
         self.__args = args
 
     def setname(self, name):
@@ -56,14 +62,21 @@ class Callback(object):
         
     def setcallback(self, callback):
         self.__callback = callback
-
-    def callback(self):
-        self.__callback(*self.__args)
+    
+    ## Actually calls the callback.
+    #
+    #  @param args A dictionary containing the arguments intended.  It will override the __args
+    #              member, in the event of a conflict.
+    def callback(self, **args):
+        if len(args) = 0:
+            self.__callback(**self.__args)
+        else:
+            self.__callback(**args)
         
     def getcallback(self):
         return self.__callback
         
-    ## Returns a copy of this object, setting the arguments to *args
+    ## Returns a copy of this object, setting the arguments to **args
     @classmethod
     def new(cls, **args):
         newObj = cls(**args)
@@ -73,18 +86,22 @@ class Callback(object):
 ## The login callback class
 class LoginCallback(Callback):
     def __init__(self, **args):
-        super(LoginCallback, self).__init__(name="login", **args)
+        super().__init__(name="login", **args)
 
 ## The logout callback class
 class LogoutCallback(Callback):
     def __init__(self, **args):
-        super(LogoutCallback, self).__init__(name="logout", **args)
+        super().__init__(name="logout", **args)
 
 ## The timeout callback class
 class TimeoutCallback(Callback):
     def __init__(self, **args):
-        super(TimeoutCallback, self).__init__(name="timeout", **args)
+        super().__init__(name="timeout", **args)
 
+## The chat callback class
+class ChatCallback(Callback):
+    def __init__(self, **args):
+        super().__init__(name="chat", **args)
 
 
 

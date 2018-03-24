@@ -32,7 +32,15 @@ from davenetgame.messages import pedia
 ## Use mp to access the constants and lists in messageList
 from davenetgame.messages import messageList as mp
 
-## This class implements the game server network layer.
+## This class implements the game server network layer.  It maintains the connections with
+#  each client and does the final encoding of each outgoing packet and decoding of incoming
+#  packets.  It handles basic login events, but does not handle more complex login protocols.
+#
+#  It also supports a basic set of callbacks to handle various low-level chores, such as pings, 
+#  and callbacks for login/logout events so that you can implement your
+#  own protocols for such things.  For most use cases, the standard callbacks should suffice.
+#  In the event that you need to customize those callbacks, do so in the server_callback
+#  interface and leave this one alone.
 class nServer(threading.Thread):
     ## The host the server listens on.  It'll most likely be an IP address, but it can
     #  be a qdn.
@@ -93,9 +101,10 @@ class nServer(threading.Thread):
         
         self.__callbackqueue = []
 
-    ## Register a callback function with the server.  The callback will be executed in the main thread, not the
-    #  server network polling thread.  A Callback object is expected here, where in server_callback the expected
-    #  object is the function object.  There must be a timestep argument because when the callback is called,
+    ## Register a callback function with the server.  The callback will be executed in the main 
+    #  thread, not the server network polling thread.  A Callback object is expected here, 
+    #  where in server_callback the expected object is the function object.  There must be a 
+    #  timestep argument because when the callback is called,
     #  the timestep will be sent.  Other arguments needed will be named by the callbacks.
     def RegisterCallback(self, cbObj):
         self.__callbacks[cbObj.name()] = cbObj

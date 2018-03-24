@@ -12,6 +12,8 @@
 //   See the License for the specific language governing permissions and
 //   limitations under the License.
 
+syntax = "proto2";
+
 // A Ping.  Fill in msg if you want, but obviously not necessary.
 message Ping {
     required fixed32 id = 1;

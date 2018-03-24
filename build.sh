@@ -33,13 +33,13 @@ case $1 in
         find ./davenetgame -name "*.pyc" -print0 | xargs -0 rm -rf
         ;;
     "build")
-        cd ./davenetgame/messages
+        cd ./davenetgame/proto
         pwd
         echo "Building protocol files"
         for a in *.proto
         do
             echo "Building $a"
-            protoc -I=./ --python_out=./ ./$a
+            protoc -I=./ --python_out=../messages ./$a
         done
         ;;
     *)

@@ -112,9 +112,14 @@ class ServerCallback(object):
 
     def cbTimeout(self, timestep, playername):
         print("User " + playername + " has timed out.")
+        
+    def cbChat(self, timestep, connection, ):
+        print(connection.player() + ": "
 
-    ## Register a callback.  Games *can* use this, but the mechanism isn't terribly useful.  For the most part,
-    #  simply implement the required callback methods in this class to receive callbacks.  Required callbacks will
+    ## Register a callback.  Games *can* use this, but the mechanism isn't terribly useful.  
+    #  For the most part,
+    #  simply implement the required callback methods in this class to receive callbacks.  
+    #  Required callbacks will
     #  throw an exception.
     def RegisterCallback(self, name, func):
         class_name = name.capitalize() + "Callback"
@@ -122,7 +127,8 @@ class ServerCallback(object):
 
         self.__callbacks.append(class_)
 
-    ## This method is called after the server is started to register all the callbacks that will be used.
+    ## This method is called after the server is started to register all the callbacks that 
+    #  will be used.
     def __setupCallbacks(self):
         for cb in self.__callbacks:
             self.__server.RegisterCallback( cb )
@@ -207,7 +213,8 @@ class ServerCallback(object):
         self.__server.Stop(True)
         self.__console.Stop()
         
-    ## Must be called periodically to keep the network layer going.  Pass it time.time() to give it
+    ## Must be called periodically to keep the network layer going.  Pass it time.time() 
+    #  to give it
     #  a timestep.
     def Update(self, timestep):
         try:
