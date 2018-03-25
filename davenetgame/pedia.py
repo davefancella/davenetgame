@@ -156,11 +156,6 @@ class Messages(object):
             if type(msg) == value:
                 return key
         
-    ## Set the internal message list.
-    def SetList(self, theList):
-        self.__messageList = theList
-
-
 ## Call this to get the existing pedia
 def getPedia():
     global __pedia
@@ -169,18 +164,6 @@ def getPedia():
         __pedia = Messages()
         
     return __pedia
-
-## This is where the messageList is setup, but the actual types are handled in the messageList module, which
-#  should only ever be imported here.
-if messageList is None:
-    from davenetgame.messages import messageList
-    
-    theMessages = getPedia()
-    theMessages.SetList(messageList.ml)
-    
-    messageList = "Gotit"
-    
-    
     
     
     

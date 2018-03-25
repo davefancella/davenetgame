@@ -20,13 +20,15 @@
 
 ## @file
 #
-#  This file implements the callback interface used to inform games that they've received net events.  The game can
-#  provide their own functions/methods to be called, but for the most part, inheriting nClientCallback and nServerCallback
-#  should be sufficient.
-
-## The base class for callback objects.  Derived classes should be named TypeCallback, where 
-#  "Type" is a camelcase name, such as Login, Logout, Chat, etc.  The all lowercase string 
-#  for type will be used internally to reference the callback.
+#  This file implements the callback interface used to inform games that they've received net
+#  events.  The game can provide their own functions/methods to be called, but for the most 
+#  part, inheriting nClientCallback and nServerCallback should be sufficient.
+#
+#  The Callback class is used internally only and should not be used by games.
+#
+#  Your callback's name should be the message or event to which it applies.  For example, if you
+#  want to respond to Chat messages, the name of that message will be "chat", so your callback
+#  should be named "chat".  Callbacks without names will never be called.
 #
 #  Regardless of where your callback will be called from, it will be passed a list of keyword
 #  arguments.  If your callback is used to process network messages, the arguments will be the
@@ -46,7 +48,7 @@ class Callback(object):
         
         self.__name = args['name']
         
-        self.__args = []
+        self.__args = {}
 
     def name(self):
         return self.__name
@@ -82,28 +84,4 @@ class Callback(object):
         newObj = cls(**args)
         
         return newObj
-
-## The login callback class
-class LoginCallback(Callback):
-    def __init__(self, **args):
-        super().__init__(name="login", **args)
-
-## The logout callback class
-class LogoutCallback(Callback):
-    def __init__(self, **args):
-        super().__init__(name="logout", **args)
-
-## The timeout callback class
-class TimeoutCallback(Callback):
-    def __init__(self, **args):
-        super().__init__(name="timeout", **args)
-
-## The chat callback class
-class ChatCallback(Callback):
-    def __init__(self, **args):
-        super().__init__(name="chat", **args)
-
-
-
-
 
