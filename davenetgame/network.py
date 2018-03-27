@@ -48,9 +48,15 @@ class NetworkBase(threading.Thread):
     ## The queue of callbacks waiting to be called.  This list is populated from inside the server thread and executed
     #  during the server's update method, which is called from the main thread.
     callbackqueue = None
+    
+    ## The owner of this Network object.  Probably not useful, but we keep it nonetheless.
+    __owner = None
         
     def __init__(self, **args):
         super().__init__(self, **args)
+
+        if 'owner' in args:
+            self.__owner = args['owner']
 
         self.__lock = threading.RLock()
         
@@ -63,20 +69,32 @@ class NetworkBase(threading.Thread):
         
         self.callbackqueue = []
 
-    ## Register a callback.
+    ## Register a message callback.
     #
-    #  @param name the name of the callback.  It should be a message type or an event type.
+    #  @param name the name of the callback.
     #  @param func the function that will be called.  It should take a keyword list of arguments.
-    def RegisterCallback(self, name, func):
-        self.__callbacks[name] = func
+    def RegisterMessageCallback(self, name, func, options={}):
+        self._registerCallback("message", name, func, options)
+        
+    ## Register an event callback.
+    #
+    #  @param name the name of the callback.
+    #  @param func the function that will be called.  It should take a keyword list of arguments.
+    def RegisterEventCallback(self, name, func, options={}):
+        self._registerCallback("event", name, func, options)
+        
+    ## Register a callback.  This is used internally only.  Please use the appropriate callback
+    #  registration method for your purpose.
+    def _registerCallback(self, ctype, name, func, options={}):
+        cbList = callback.GetCallbackList()
+        
+        cbList.RegisterCallback(ctype, name, func, options)
     
     ## Gets a callback object for a specific event/message.
-    def GetCallback(self, name):
-        if name in self.__callbacks:
-            return callback.Callback(name=name, callback=self.__callbacks[name] )
+    def GetCallback(self, ctype, name):
+        cbList = callback.GetCallbackList()
         
-        # TODO: Throw an exception here
-        return None
+        return cbList.GetCallback(ctype, name)
     
     ## Appends a callback object to the callbackqueue.
     def AppendCallback(self, cb):

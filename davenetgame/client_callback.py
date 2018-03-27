@@ -55,7 +55,7 @@ class ClientCallback(object):
         
         self.__client.Login(self.__name)
 
-        # @todo: Write the part that connects the callbacks to the client object
+        # @@todo Write the part that connects the callbacks to the client object
 
     ## Stops the client.  Call will block until the client thread has stopped.
     def Stop(self):

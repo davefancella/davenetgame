@@ -71,7 +71,8 @@ class ServerCallback(object):
     __console = None
     __server = None
     __consolecommands = None
-    __callbacks = None
+    __callback_events = None
+    __callback_messages = None
  
     ## Constructor.  Pass it a dictionary with any of the following keys to initialize them:
     #      host : the host that will be listened to by the socket.
@@ -84,7 +85,8 @@ class ServerCallback(object):
         self.__name = "Test Server"
         self.__consolecommands = []
         
-        self.__callbacks = []
+        self.__callback_events = []
+        self.__callback_messages = []
         
         if 'host' in args:
             self.SetHost(args['host'])
@@ -98,44 +100,137 @@ class ServerCallback(object):
         self.RegisterCommand('help', self.consoleHelp, "help [command]", "print(this helpful text.  Alternately, type in a command to see its helpful text.")
         self.RegisterCommand('quit', self.consoleQuit, "quit", "Quit the server.")
 
-        self.RegisterCallback('login', self.cbLogin)
-        self.RegisterCallback('logout', self.cbLogout)
-        self.RegisterCallback('timeout', self.cbTimeout)
+        self.RegisterMessageCallback('login', self.cbLogin)
+        self.RegisterMessageCallback('logout', self.cbLogout)
+        self.RegisterEventCallback('timeout', self.cbTimeout)
+
+    ## @name Regular API
+    #
+    #@{
 
     ## Call to set the host that the server will listen on.
     def SetHost(self, host):
         self.__host = host
 
+    ## Call to set the server's name
+    def SetName(self, _name):
+        self.__name = _name
+
+    ## Call to set the port that the server will listen on.
+    def SetPort(self, port):
+        # Ensure that port is always an integer, even if the caller accidentally passes a string
+        self.__port = int(port)
+
+    ## Call to start the server.  Also starts the console.
+    def StartServer(self):
+        self.__console.Start()
+        self.__server = server.nServer(self)
+        self.__setupCallbacks()
+        
+        self.__server.ListenOn(self.__host, self.__port)
+
+        self.__server.Start()
+
+        print("Starting " + self.__name + ".")
+        
+    ## Call to stop the server.  Stops the console as well.
+    def Stop(self):
+        self.__server.Stop(True)
+        self.__console.Stop()
+        
+    ## Must be called periodically to keep the network layer going.  Pass it time.time() 
+    #  to give it
+    #  a timestep.
+    def Update(self, timestep):
+        try:
+            while self.__console.HasPending():
+                msg = self.__console.pop()
+                args = msg.split(" ")
+                
+                command = args.pop(0)
+                
+                command = command.lower()
+                
+                # Ignore simple presses of enter
+                if command == '':
+                    continue
+
+                foundcommand = False
+                for a in self.__consolecommands:
+                    if a.command() == command:
+                        a.callback(*args)
+                        foundcommand = True
+                
+                if not foundcommand:
+                    print("Command not recognized: " + command)
+                
+            # Update the server.  This is where the callbacks will get called.
+            self.__server.Update(timestep)
+                
+        except KeyboardInterrupt:
+            print("Quitting due to keyboard interrupt")
+    #@}
+       
+    ## @name Callback Methods
+    #
+    #  These are the callback methods for particular events or messages.  If you need to
+    #  customize the behavior of these callbacks, and you probably will for some, then override
+    #  them in your subclass.
+    #@{
+    
     ## This callback is called when a user has successfully logged in.  Default implementation just prints to stdout.
-    def cbLogin(self, timestep, connection):
+    def cbLogin(self, **args):
         print("User " + connection.player() + " has logged in.")
 
-    def cbLogout(self, timestep, connection):
+    def cbLogout(self, **args):
         print("User " + connection.player() + " has logged out.")
 
-    def cbTimeout(self, timestep, playername):
+    def cbTimeout(self, **args):
         print("User " + playername + " has timed out.")
         
-    def cbChat(self, timestep, connection, ):
+    def cbChat(self, **args):
         print(connection.player() + ": "
 
-    ## Register a callback.  Games *can* use this, but the mechanism isn't terribly useful.  
+    #@}
+    
+    ## @name Internal
+    #
+    #  These methods are for internal use only.  Users should not use them unless there's
+    #  absolutely no other way to do whatever it is they're trying to do, and they haven't
+    #  figured out they shouldn't do it, whatever it is.
+    #@{
+
+    ## Register an event callback.  Games *can* use this, but the mechanism isn't terribly useful.  
     #  For the most part,
     #  simply implement the required callback methods in this class to receive callbacks.  
     #  Required callbacks will
     #  throw an exception.
-    def RegisterCallback(self, name, func):
-        class_name = name.capitalize() + "Callback"
-        class_ = getattr(callback, class_name)(callback=func)
+    def RegisterEventCallback(self, name, func, options={}):
+        self.__callback_events.append([name, func, options])
 
-        self.__callbacks.append(class_)
+    ## Register a message callback.  Games *can* use this, but the mechanism isn't terribly useful.  
+    #  For the most part,
+    #  simply implement the required callback methods in this class to receive callbacks.  
+    #  Required callbacks will
+    #  throw an exception.
+    def RegisterMessageCallback(self, name, func, options={}):
+        self.__callback_messages.append([name, func, options])
 
     ## This method is called after the server is started to register all the callbacks that 
     #  will be used.
     def __setupCallbacks(self):
-        for cb in self.__callbacks:
-            self.__server.RegisterCallback( cb )
+        for cb in self.__callback_events:
+            self.__server.RegisterEventCallback(cb[0], cb[1], cb[2])
+        for cb in self.__callback_messages:
+            self.__server.RegisterMessageCallback(cb[0], cb[1], cb[2])
+    #@}
 
+    ## @name Console API
+    #
+    #  These methods give access to the built-in server console and the various commands that
+    #  can be created.
+    #@{
+    
     ## Console command: show
     def consoleShow(self, *args):
         if len(args) != 1:
@@ -189,64 +284,8 @@ class ServerCallback(object):
                 helplong = helplong
             )
         )
+    #@}
 
-    ## Call to set the server's name
-    def SetName(self, _name):
-        self.__name = _name
-
-    ## Call to set the port that the server will listen on.
-    def SetPort(self, port):
-        # Ensure that port is always an integer, even if the caller accidentally passes a string
-        self.__port = int(port)
-
-    ## Call to start the server.  Also starts the console.
-    def StartServer(self):
-        self.__console.Start()
-        self.__server = server.nServer()
-        self.__setupCallbacks()
-        
-        self.__server.ListenOn(self.__host, self.__port)
-
-        self.__server.Start()
-
-        print("Starting " + self.__name + ".")
-        
-    ## Call to stop the server.  Stops the console as well.
-    def Stop(self):
-        self.__server.Stop(True)
-        self.__console.Stop()
-        
-    ## Must be called periodically to keep the network layer going.  Pass it time.time() 
-    #  to give it
-    #  a timestep.
-    def Update(self, timestep):
-        try:
-            while self.__console.HasPending():
-                msg = self.__console.pop()
-                args = msg.split(" ")
-                
-                command = args.pop(0)
-                
-                command = command.lower()
-                
-                # Ignore simple presses of enter
-                if command == '':
-                    continue
-
-                foundcommand = False
-                for a in self.__consolecommands:
-                    if a.command() == command:
-                        a.callback(*args)
-                        foundcommand = True
-                
-                if not foundcommand:
-                    print("Command not recognized: " + command)
-                
-            # Update the server.  This is where the callbacks will get called.
-            self.__server.Update(timestep)
-                
-        except KeyboardInterrupt:
-            print("Quitting due to keyboard interrupt")
         
 ## This class implements console commands.  To create a new console command, simply make an instance of
 #  this class, giving all the keyword arguments in the constructor.

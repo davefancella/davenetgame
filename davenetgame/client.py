@@ -221,7 +221,7 @@ class nClient(threading.Thread):
             if theId != mp.M_ACK:
                 ackList.append( buf )
             else:
-                # @todo: add the stuff to track messages that need to be acked by the server
+                # @@todo add the stuff to track messages that need to be acked by the server
                 pass
         
         if len(ackList) > 0:

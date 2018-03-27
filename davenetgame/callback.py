@@ -34,6 +34,81 @@
 #  arguments.  If your callback is used to process network messages, the arguments will be the
 #  actual members of the message.  In other situations, the callback arguments will be specified
 #  by the documentation for the appropriate situation.
+
+## The callback list object.  This object stores the master list of all registered callbacks.
+#  It is a singleton, so you can retrieve the list by calling GetCallbackList, however, this
+#  should only be used internally.  Callbacks should normally be registered using the appropriate
+#  methods in the client/server callback object, even though those objects are just going to
+#  store the callbacks here anyway.
+class CallbackList(object):
+    ## The actual callback list
+    __callbacks = None
+    
+    def __init__(self):
+        super().__init__()
+        
+        self.__callbacks = {
+                    "message" : {},
+                    "event" : {},
+        }
+
+    ## Register a callback.
+    #
+    #  @param ctype the type of the callback.  Current choices are "message" and "event",
+    #               referring, of course, to network messages and network events.
+    #  @param name the name of the callback.  It should be a specific message or event type,
+    #               such as "chat" or "login" or "timeout".
+    #  @param func the function that will be called.  It should take a keyword list of arguments.
+    #  @param options the options for the callback, which depends on the callbck type.
+    def RegisterCallback(self, ctype, name, func, options={}):
+        if ctype in self.__callbacks:
+            if name not in self.__callbacks[ctype]:
+                self.__callbacks[ctype][name] = {
+                                    'callback' : func,
+                                    'options' : options,
+                                    }
+            else:
+                pass
+                # @todo Raise an exception if someone tries to register more than one callback
+                #       for the same ctype and name.
+    
+    ## Gets a callback object for a specific event/message.
+    # 
+    #  @param ctype the type of the callback, either 'message' or 'event'
+    #  @param name the name of the callback.
+    def GetCallback(self, ctype, name):
+        if ctype in self.__callbacks:
+            if name in self.__callbacks[ctype]:
+                return callback.Callback(name=name, 
+                                         callback=self.__callbacks[ctype][name]['callback'], 
+                                         options=self.__callbacks[ctype][name]['options'] )
+            else:
+                pass
+                # @todo Throw an exception here for not finding the callback.
+        # @todo Throw an exception here for not finding the callback type.
+        return None
+    
+    ## Returns the options for the specified callback.  It does not return the actual callback
+    #  itself, just the options for it.
+    def GetCallbackOptions(self, ctype, name):
+        if ctype in self.__callbacks:
+            if name in self.__callbacks[ctype]:
+                return self.__callbacks[ctype][name]['options']
+            
+        # @todo EXCEPTIONS EVERYWHERE NEED THEM EVERYWHERE!!!!
+        return None
+    
+__callbacklist = None
+
+def GetCallbackList():
+    global __callbacklist
+    
+    if __callbacklist is None:
+        __callbacklist = CallbackList()
+        
+    return __callbacklist
+
+## The callback class, used when a callback has to be queued up to be called from the main thread.
 class Callback(object):
     ## The function that will be called.
     __callback = None
@@ -41,10 +116,16 @@ class Callback(object):
     __name = None
     ## The argument list for when the callback is executed
     __args = None
+    ## The options for the callback
+    __options = None
     
     def __init__(self, **args):
         if 'callback' in args:
             self.__callback = args['callback']
+        
+        self.__options = {}
+        if 'options' in args:
+            self.__options = args['options']
         
         self.__name = args['name']
         

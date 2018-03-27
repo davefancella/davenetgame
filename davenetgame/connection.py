@@ -108,7 +108,7 @@ class nConnection(object):
     ## The ping, as a float, for the connection.  This is calculated by taking an average of the time it took
     #  for a message to be acked, and only concerns messages that have been acked.  It could be a spurious value
     #  in more serious packet loss situations.
-    #  @todo: make this calculation take into account packet loss.
+    #  @@todo make this calculation take into account packet loss.
     __conping = None
     
     ## When you instantiate an nConnection, you must give it a host and port.  There's
@@ -200,7 +200,7 @@ class nConnection(object):
                     self.__pinglist = cleaned_list
                     cleaned_list = []
                     # Now do the same thing, looking through non-ping messages.
-                    # @todo: make this actually work
+                    # @@todo make this actually work
                     for x in self.__acklist:
                         if x[0] == replyId:
                             # We actually treat every ack we receive as evidence of a healthy connection, and

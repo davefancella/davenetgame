@@ -131,6 +131,12 @@ class nServer(network.NetworkBase):
         if blocking:
             self.join()
 
+    ## Create a new connection
+    def CreateConnection(self, address, player):
+        newCon = self.__connections.Create(addr, player, self)
+        newCon.Login(buf)
+
+
     ## Starts the server.  Don't call this directly, instead call Start().
     def run(self):
         while self.__continue:
@@ -149,19 +155,22 @@ class nServer(network.NetworkBase):
                 formatString = "!I" + str(padding) + "s"
                 theId, payload = struct.unpack(formatString, data)
                 
+                msgOptions = self.__pedia.GetMessageOptions(theId)
+                
                 # Handle all messages first that don't require being logged in.
                 if addr not in self.__connections:
-                    if theId not in mp.noLogin:
+                    if 'nologin' not in msgOptions:
                         # You must be logged in, and you aren't, so discard the message and ignore it.
                         continue
                     else:
                         buf = self.__pedia.GetMessageType(theId)()
                         buf.ParseFromString(payload)
                         
-                        # Login the user, send a response
-                        if theId == mp.M_LOGIN:
-                            newCon = self.__connections.Create(addr, buf.player, self)
-                            newCon.Login(buf)
+                        fieldlist = bug.ListFields()
+                        cb = self.GetCallback('message', self.__pedia.GetTypeName() )
+                        
+                        cb.setargs(fieldlist)
+                        cb.callback()
                             
                         continue
                 

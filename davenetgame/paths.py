@@ -18,7 +18,25 @@
 
 '''
 
-# a collection of functions to handle paths
+## @file
+#
+#  A number of convenience functions that simplify cross-platform path issues.
+#
+#  This is a module that is optional for your use and is provided as a convenience, since
+#  Python's "batteries included" philosophy sometimes leaves a bit to be desired.  Most of this
+#  module provides convenience functions that wrap Python functions to execute common tasks,
+#  but the most useful part of this module is the capability to provide access to game
+#  resources without having to consider the underlying directory structure of the platform.
+#  That makes the most useful function GetPath, which takes a simple string such as "graphic"
+#  or "sound_effect" and returns the actual on-disk path to the file you're looking for.  For
+#  GetPath to be effective, the module must be initialized by calling InitializePaths, which
+#  tries to find out where the app exists and setup the resource paths accordingly.
+#
+#  This module is both stable and half-baked, at present time.  Luckily, the Network stuff,
+#  i.e. the reason you want to use this library, doesn't use this module at all.  It is provided
+#  strictly for your convenience.  I've not personally seen any game engine or GUI toolkit
+#  provide the basic functionality given here, so I've included it in this library so you can
+#  use it.
 
 import os
 import sys
@@ -184,7 +202,7 @@ def InitializePaths(appDirName, thePaths):
 
     # We have to iterate this way so the caller can have dependencies on previous
     # path definitions
-    # todo: make it so that the caller can use previous paths in the new path definition
+    # @todo make it so that the caller can use previous paths in the new path definition
     #       this is low priority, I can copy and paste and make it work fine anyway.
     while len(templist) > 0:
         key, valueList = templist.pop(0)

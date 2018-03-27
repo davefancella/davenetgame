@@ -64,9 +64,9 @@ class Messages(object):
         
         # Add all of the internal message types here, to ensure that they get the right
         # IDs
-        self.AddInternalMessageType("ping", "Ping")
+        self.AddInternalMessageType("ping", "Ping", {'nologin':None} )
         self.AddInternalMessageType("ack", "Ack")
-        self.AddInternalMessageType("login", "Login")
+        self.AddInternalMessageType("login", "Login", {'nologin':None} )
         self.AddInternalMessageType("logout", "Logout")
         self.AddInternalMessageType("chat", "Chat")
 
@@ -81,7 +81,13 @@ class Messages(object):
     #               to create the name of the file that contains the message, i.e. ping_pb2.py
     #   @param classname the name of the class that we'll find inside the _pb2.py file, as defined
     #                    in the .proto file.
-    def AddMessageType(self, module, name, classname):
+    #  @param options the options for the message.  Currently, only "nologin" is supported,
+    #                 and means that the message doesn't require login to be processed.  Note
+    #                 that this is a dictionary, and 'nologin' is a key.  The value associated
+    #                 with the key is not evaluated in any way, so assigning it a value of None
+    #                 is so useless that it is comical to do so.  Who doesn't like a meaningful
+    #                 value of None?
+    def AddMessageType(self, module, name, classname, options={}):
         self._addMessageType(module, name, classname, False)
         
     ## Adds an internal message type.  Provide it with a name, and the rest is handled internally.
@@ -90,17 +96,33 @@ class Messages(object):
     #
     #   @param name the name of the message type.  It should be able to be prepended to _pb2.py
     #               to create the name of the file that contains the message, i.e. ping_pb2.py
-    def AddInternalMessageType(self, name, classname):
+    #   @param classname the name of the class that we'll find inside the _pb2.py file, as defined
+    #                    in the .proto file.
+    #  @param options the options for the message.  Currently, only "nologin" is supported,
+    #                 and means that the message doesn't require login to be processed.  Note
+    #                 that this is a dictionary, and 'nologin' is a key.  The value associated
+    #                 with the key is not evaluated in any way, so assigning it a value of None
+    #                 is so useless that it is comical to do so.  Who doesn't like a meaningful
+    #                 value of None?
+    def AddInternalMessageType(self, name, classname, options={}):
         self._addMessageType("davenetgame.messages", name, classname, True)
         
     ## Used internally to actually add the message types.
     #
     #  @param module the string specifying the module
     #  @param name the name of the message type.
+    #   @param classname the name of the class that we'll find inside the _pb2.py file, as defined
+    #                    in the .proto file.
+    #  @param options the options for the message.  Currently, only "nologin" is supported,
+    #                 and means that the message doesn't require login to be processed.  Note
+    #                 that this is a dictionary, and 'nologin' is a key.  The value associated
+    #                 with the key is not evaluated in any way, so assigning it a value of None
+    #                 is so useless that it is comical to do so.  Who doesn't like a meaningful
+    #                 value of None?
     #  @param internal whether or not the message is internal to davenetgame.  It defaults
     #                  to False as a protection sort of thing, but it should never be called
     #                  outside of davenetgame in the first place.
-    def _addMessageType(self, module, name, internal=False):
+    def _addMessageType(self, module, name, classname, options={}, internal=False):
         if internal is True:
             if name not in self.__messageNames:
                 if self.__lastmessageId < 256:
@@ -109,10 +131,10 @@ class Messages(object):
                     self.__lastmessageId = self.__lastmessageId + 1
                 else:
                     pass
-                    # TODO: this should throw an exception.
+                    # @todo this should throw an exception.
             else:
                 pass
-                # TODO: This should throw an exception
+                # @todo This should throw an exception
         else:
             if name not in self.__messageNames:
                 self.__messageNames[name] = self.__lastCustomMessageId
@@ -120,7 +142,7 @@ class Messages(object):
                 self.__lastCustomMessageId = self.__lastCustomMessageId + 1
             else:
                 pass
-                # TODO: This should throw an exception
+                # @todo This should throw an exception
                 
         self._importMessageClass(name)
     
@@ -155,7 +177,19 @@ class Messages(object):
         for key, value in self.__messageList.items():
             if type(msg) == value:
                 return key
+    
+    ## Gets the message name, as a string, when given an ID
+    def GetTypeName(self, Id):
+        if Id in self.__messageTypes:
+            return self.__messageTypes[Id]
+    
+    ## Gets the message options without creating a type object for them.
+    def GetMessageOptions(self, Id):
+        if Id in self.__messageList:
+            return self.__messageList[Id]['options']
         
+        return {}
+    
 ## Call this to get the existing pedia
 def getPedia():
     global __pedia
