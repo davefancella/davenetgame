@@ -18,6 +18,8 @@
 
 '''
 
+from davenetgame import paths
+
 ## @class ProtocolBase
 #
 #  This class represents the base class for all protocols implemented by the library.  Typically,
@@ -55,10 +57,13 @@ class ProtocolBase(object):
     #  explicitly set this in your subclass.
     __iscore = None
     
+    ## The event callback function.  It will be called whenever a network even happens.
+    __event_callback = None
+    
     def __init__(self, **args):
         self.__host = 'localhost'
         self.__port = 8888
-        self.__name = getpass.getuser()
+        self.__name = paths.GetUsername()
         
         if 'transport' in args:
             self.__transport = args['transport']
@@ -74,6 +79,21 @@ class ProtocolBase(object):
             self.RegisterMessageCallback('ping', self.PingMessage)
             self.RegisterMessageCallback('ack', self.AckMessage)
             
+    ## @name Callback Methods
+    #
+    #  These are the callback methods for particular messages.
+    #@{
+    
+    ## Callback for ack messages.
+    def AckMessage(self, **args):
+        pass
+    
+    ## Callback for ping messages
+    def PingMessage(self, **args):
+        pass
+    
+    #@}
+    
     ## Call to determine if this is the core protocol object.  Used by the EventDispatcher
     #  when there are multiple protocols to figure out which one to start.
     def IsCore(self):
@@ -88,6 +108,9 @@ class ProtocolBase(object):
 
     def SetName(self, name):
         self.__name = name
+        
+    def Name(self):
+        return self.__name
 
     def SetTransport(self, transport):
         self.__transport = transport
@@ -119,6 +142,10 @@ class ProtocolBase(object):
         
         return bw
     
+    ## Call this to register your one and only event callback
+    def RegisterEventCallback(self, cb):
+        self.__event_callback = cb
+    
     ## Before you can start the Protocol, you must have a Transport object instantiated, and
     #  you must call SetTransport to tell the Protocol about it.  Then you must call this method
     #  to setup all the message callbacks.  Then, finally, you can start the protocol.
@@ -132,9 +159,7 @@ class ProtocolBase(object):
             pass
             #raise AnException
 
-    ## When your protocol is setup, call Start to start it.  On the server, it will create the 
-    #  socket and start listening for connections.  On the client, it will create the socket and
-    #  start polling it, and also initiate a connection with the server.
+    ## When your protocol is setup, 
     #
     #  Your subclass should only implement this method if it provides for initiating and
     #  terminating a connection.  If it's simply an add-on protocol, like a Chat protocol,
@@ -144,9 +169,17 @@ class ProtocolBase(object):
     def Start(self):
         raise NotImplementedError
 
+    def Stop(self):
+        raise NotImplementedError
+
     ## The actual method called to start the protocol, used internally.
     def _start(self):
+        self.__transport._start()
         self.Start()
+        
+    def _stop(self):
+        self.__transport._stopI()
+        self.Stop()
 
     ## Register a message callback.  Games *can* use this, but the mechanism isn't terribly useful.  
     #  For the most part,

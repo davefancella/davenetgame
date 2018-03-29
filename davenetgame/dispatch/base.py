@@ -27,9 +27,20 @@ class DispatcherBase(object):
     ## The list of protocols being used
     __protocols = None
     
+    ## The core protocol being used
+    __core_protocol = None
+    
     def __init__(self, **args):
         self.__protocols = []
         
+        if 'protocols' in args:
+            self.__protocols = args['protocols']
+            
+        self.__core_protocol = None
+    
+    def Update(self, timestep):
+        pass
+    
     def AddProtocol(self, protocol):
         self.__protocols.append(protocol)
         
@@ -37,8 +48,13 @@ class DispatcherBase(object):
         for prot in self.__protocols:
             prot.RegisterEventCallback(self.ProcessEvent)
             if prot.IsCore():
-                prot._start()
+                if self.__core_protocol is None:
+                    self.__core_protocol = prot
+        self.__core_protocol._start()
+        
+    def Stop(self):
+        self.__core_protocol._stop()
         
     def ProcessEvent(self, event):
-        pass
+        print(event)
 

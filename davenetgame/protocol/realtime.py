@@ -18,10 +18,8 @@
 
 '''
 
-import getpass # for convenience
-
 from davenetgame.protocol.base import ProtocolBase
-from davenetgame import connection
+#from davenetgame import connection
 
 class RealtimeClient(ProtocolBase):
     def __init__(self, **args):
@@ -76,7 +74,7 @@ class RealtimeServer(ProtocolBase):
     #      port : the port on which the socket will listen
     #      name : the name of the server
     def __init__(self, **args):
-        super().__init__(self, **args)
+        super().__init__(**args)
 
         if 'name' in args:
             self.SetName(args['name'])
@@ -88,26 +86,18 @@ class RealtimeServer(ProtocolBase):
 
     ## Starts the server
     def Start(self):
-        self.__server = server.nServer(owner = self)
-        self.__setupCallbacks()
-        
-        self.__server.ListenOn(self.__host, self.__port)
-
-        self.__server.Start()
-
-        print("Starting " + self.__name + ".")
+        print("Starting " + self.Name() + ".")
         
     ## Call to stop the server.  Stops the console as well.
     def Stop(self):
-        self.__server.Stop(True)
+        pass
         
     ## Must be called periodically to keep the network layer going.  Pass it time.time() 
     #  to give it
     #  a timestep.
     def Update(self, timestep):
-        try:
-            # Update the server.  This is where the callbacks will get called.
-            self.__server.Update(timestep)
+        # Update the server.  This is where the callbacks will get called.
+        self.__server.Update(timestep)
                 
     ## @name Callback Methods
     #

@@ -35,9 +35,10 @@ HOST = ''   # Symbolic name meaning all available interfaces
 PORT = 8888 # Arbitrary non-privileged port
  
 theServer = dispatcher.EventDispatcher()
-theProtocol = realtime.RealtimeProtocol( transport = udp.Udp(isserver=True,
+theProtocol = realtime.RealtimeServer( transport = udp.Udp(isserver=True,
                                                              clienthost=HOST,
-                                                             clientport=PORT)
+                                                             clientport=PORT),
+                                       core = True
                                        )
 theProtocol.BindTransport()
 

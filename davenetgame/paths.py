@@ -41,6 +41,7 @@
 import os
 import sys
 #import log
+import pwd
 
 _allpaths = {}
 
@@ -129,8 +130,8 @@ def GetPath(path, targetFile=None):
         else:
             return JoinPaths(_allpaths[path], targetFile)
     else:
-        print "Don't know path '" + path + "'!"
-        print _allpaths
+        print("Don't know path '" + path + "'!")
+        print(_allpaths)
         return None
 
 ## Returns true if the path exists.
@@ -231,7 +232,7 @@ def JoinPaths(*args):
 
 ## Makes a directory, with optional permissions as specified by the caller.
 #  Returns True on success and False on failure
-def MkDir(path, permissions = 0775):
+def MkDir(path, permissions = None):
     path = os.path.expanduser(path)
     if Exists(path):
         raise errors.DirectoryExistsError("Tried to create directory '" + path + "', but the path already exists!")

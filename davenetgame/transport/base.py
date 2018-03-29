@@ -18,7 +18,7 @@
 
 '''
 
-import threading
+import threading, time
 
 from davenetgame import callback
 
@@ -83,14 +83,11 @@ class TransportBase(threading.Thread):
     ## Do we continue the thread?
     __continue = None
 
-    ## This is the list of message types
-    __pedia = None
-    
     ## Whether or not this socket is a server.
     __isserver = None
     
     def __init__(self, **args):
-        super().__init__(**args)
+        super().__init__()
 
         if 'owner' in args:
             self.__owner = args['owner']
@@ -117,8 +114,6 @@ class TransportBase(threading.Thread):
         self.__buffersize = 1024
         
         self.__callbacks = callback.CallbackList()
-        
-        self.__pedia = pedia.getPedia()
         
         self.__continue = False
     
@@ -207,7 +202,7 @@ class TransportBase(threading.Thread):
     #
     #  @param blocking: If True, this call will block.  If False, it returns immediately and the thread will
     #                   stop itself on its own.  
-    def _stop(self, blocking=True):
+    def _stopI(self, blocking=True):
         self.SetContinue(False)
     
         if blocking:
@@ -269,6 +264,7 @@ class TransportBase(threading.Thread):
     #  @param name the name of the callback.
     #  @param func the function that will be called.  It should take a keyword list of arguments.
     def RegisterCallback(self, name, func, options={}):
+        pass
         #cbList = callback.GetCallbackList()
         
         #cbList.RegisterCallback('message', name, func, options)
