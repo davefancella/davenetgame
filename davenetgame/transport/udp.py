@@ -23,7 +23,7 @@
 
 import socket, select, struct
 
-from davenetgame.transport import TransportBase
+from davenetgame.transport.base import TransportBase
 
 ## This class implements the UDP Transport class.
 class Udp(TransportBase):

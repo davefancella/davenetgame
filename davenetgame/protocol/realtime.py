@@ -20,7 +20,7 @@
 
 import getpass # for convenience
 
-from davenetgame.protocol import ProtocolBase
+from davenetgame.protocol.base import ProtocolBase
 from davenetgame import connection
 
 class RealtimeClient(ProtocolBase):
