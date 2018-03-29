@@ -59,19 +59,30 @@ class nServer(network.NetworkBase):
     
     ## The list of current connections
     __connections = None
+    
+    ## The list of events that need to be handled in the main thread
+    __events = None
 
     def __init__(self, **args):
-        super().__init__(self, **args)
+        super().__init__(**args)
         
         self.__pedia = pedia.getPedia()
         
         self.__continue = False
-    
-        self.__connections = connection.nConnectionList()
+        self.__events = []
+        self.__connections = connection.ServerConnectionList()
         
     ## Returns the list of connections from the server
     def GetConnectionList(self):
         return self.__connections
+
+    ## Adds an event to be called from the game thread.  This is called from either
+    #  the server thread or the game thread.
+    def AddEvent(self, event, args):
+        cb = self.GetCallback('event', event)
+        cb.setargs(args)
+        
+        self.callbackqueue.append(cb)
 
     ## Updates the server.  This runs from inside the game thread, not the server thread.
     def Update(self, timestep):
@@ -132,10 +143,9 @@ class nServer(network.NetworkBase):
             self.join()
 
     ## Create a new connection
-    def CreateConnection(self, address, player):
-        newCon = self.__connections.Create(addr, player, self)
-        newCon.Login(buf)
-
+    def CreateConnection(self, connectInfo):
+        newCon = self.__connections.Create(connectInfo['address'], connectInfo['player'], self)
+        newCon.Login(connectInfo)
 
     ## Starts the server.  Don't call this directly, instead call Start().
     def run(self):
@@ -166,8 +176,10 @@ class nServer(network.NetworkBase):
                         buf = self.__pedia.GetMessageType(theId)()
                         buf.ParseFromString(payload)
                         
-                        fieldlist = bug.ListFields()
+                        fieldlist = buf.ListFields()
                         cb = self.GetCallback('message', self.__pedia.GetTypeName() )
+                        
+                        fieldlist['address'] = addr
                         
                         cb.setargs(fieldlist)
                         cb.callback()

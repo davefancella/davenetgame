@@ -22,9 +22,8 @@ import time
 
 import threading
 
-from davenetgame.messages import pedia
-## Use mp to access the constants and lists in messageList
-from davenetgame.messages import messageList as mp
+from davenetgame import pedia
+from davenetgame import callback
 
 ## These are constants associated with connections.  They generally give the status of the connection.
 C_OK = 0
@@ -48,22 +47,11 @@ statuslist = [
     ['C_DISCONNECTED', "Disconnected"]
 ]
 
-# Convenient line to copy the global statement for methods that need it.
-# global C_OK, C_SILENT, C_TIMINGOUT, C_TIMEOUT
-
-## The last ID assigned to a connection
-__lastId = 0
-
-def GetConId():
-    global __lastId
-    
-    __lastId += 1
-    
-    return __lastId
-
-## This class represents a single connection.  On the server, it's a client connection.  On the client,
-#  it's only the server and may not be used at all.  Connections know nothing about sockets.
-class nConnection(object):
+## The base class for connection objects.  It has all the stuff needed on both clients and
+#  servers that is common to connections.  Don't use this class directly, use either
+#  ServerConnection on the server or ClientConnection on the client.  Even then, you probably
+#  don't need to worry about these things.  They're low level.
+class ConnectionBase(object):
     ## The host for this connection
     __host = None
     ## The port for this connection
@@ -72,10 +60,9 @@ class nConnection(object):
     __id = None
     ## The user's name for this connection
     __player = None
-    
-    ## The server object, used for the callback interface.
-    __server = None
-    
+    ## The owner of this connection.  It should be the socket poller that generates message and
+    #  event callback calls.
+    __owner = None
     ## The list of outgoing messages to this connection.
     __outgoing = None
     
@@ -110,16 +97,19 @@ class nConnection(object):
     #  in more serious packet loss situations.
     #  @@todo make this calculation take into account packet loss.
     __conping = None
-    
-    ## When you instantiate an nConnection, you must give it a host and port.  There's
-    #  no such thing as a connection without one.
-    def __init__(self, host, port, player, server):
-        global C_OK, C_SILENT, C_TIMINGOUT, C_TIMEOUT
         
-        self.__server = server
-        self.__host = host
-        self.__port = port
-        self.__player = player
+    ## Create a connection.
+    #
+    #  @param host the host at the other end of the connection.
+    #  @param port the port at the other end of the connection
+    #  @param owner the owner of this connection.  It should be a socket polling object.
+    def __init__(self, **args):
+        global C_OK, C_SILENT, C_TIMINGOUT, C_TIMEOUT
+
+        self.__host = args['host']
+        self.__port = args['port']
+        self.__owner = args['owner']
+ 
         self.__id = GetConId()
         
         self.__outgoing = []
@@ -136,13 +126,15 @@ class nConnection(object):
         
         self.__msgintervals = []
         
-        self.__lock = threading.RLock()
-        
         self.__conping = 0.0
         
     ## The id for this connection
     def id(self):
         return self.__id
+    
+    ## Returns the pedia object.  Used mainly by subclasses
+    def Pedia(self):
+        return self.__pedia
     
     ## Returns the current status of the connection
     def Status(self):
@@ -158,16 +150,29 @@ class nConnection(object):
     def Update(self, timestep):
         pass
         
-    ## All of the logic for maintaining a connection is kept here, but the actual message sending isn't
-    #  handled here.  The timestep parameter should be a timestamp from the server.  This runs in the
-    #  server thread, so it should keep itself in its own space and not bother anything else.  Use the
-    #  incoming and outgoing message queues to exchange information with the rest of the app, making sure
-    #  to use the __lock object to avoid thread collisions on the queues.
+    ## Returns the owner of this connection.
+    def Owner(self):
+        return self.__owner
+    
+    ## Acquires a lock.  Used for thread safety.
+    def AcquireLock(self):
+        self.__owner.AcquireLock()
+        
+    ## Releases a lock.  Used for thread safety.
+    def ReleaseLock(self):
+        self.__owner.ReleaseLock()
+    
+    ## All of the logic for maintaining a connection is kept here, but the actual message 
+    #  sending isn't handled here.  The timestep parameter should be a timestamp from the 
+    #  server.  This runs in the server thread, so it should keep itself in its own space and 
+    #  not bother anything else.  Use the incoming and outgoing message queues to exchange 
+    #  information with the rest of the app, making sure to use the __lock object to avoid 
+    #  thread collisions on the queues.
     def maintain(self, timestep):
         # First, process incoming messages.  We do this first so that the housekeeping messages
         # received are all processed before updating the connection status and sending new pings.
         ackList = []
-        self.__lock.acquire()
+        self.AcquireLock()
         while self.HasIncoming():
             msg = None
             msg = self.__incoming.pop(0)
@@ -221,7 +226,7 @@ class nConnection(object):
                 ackList.append(msg.id)
                 #pass
         
-        self.__lock.release()
+        self.ReleaseLock()
             
         # Now, ack all the messages that were received and aren't acks.  Don't ack an ack!
         # ackList is built above from messages that aren't acks and get mostly ignored above.
@@ -247,7 +252,8 @@ class nConnection(object):
 
         timeinterval = timestep - self.__lastrecv
         
-        # Update the status of this connection based on how long since we've heard from the client.
+        # Update the status of this connection based on how long since we've heard from the
+        # other side.
         global C_OK, C_SILENT, C_TIMINGOUT, C_TIMEOUT
         
         if timeinterval < 10.0:
@@ -266,21 +272,7 @@ class nConnection(object):
         # Avoid a division by zero error that should never happen
         if len(self.__msgintervals) > 0:
             self.__conping = sum(self.__msgintervals)/len(self.__msgintervals)
-    
-    ## Tell the connection to login, which at this time consists of sending an ack to the connected
-    #  client and starting connection maintenance.
-    def Login(self, loginPacket):
-        # Send the ack.
-        msg = self.__pedia.GetMessageType(mp.M_ACK)()
-        msg.mtype = mp.M_ACK
-        msg.replied.append(loginPacket.id)
-        
-        self.AddOutgoing(msg)
-        
-        # Create the callback.
-        cb = self.__server.GetCallback('login', [time.time(), self] )
-        self.__server.AppendCallback(cb)
-    
+
     ## Pings the other side
     def Ping(self, timestep):
         thePing = self.__pedia.GetMessageType(mp.M_PING)()
@@ -309,17 +301,17 @@ class nConnection(object):
         
         msg.id = mp.get_id()
         
-        self.__lock.acquire()
+        self.AcquireLock()
         self.__outgoing.append(msg)
-        self.__lock.release()
+        self.ReleaseLock()
         
         return msg.id
 
     ## Gets the next outgoing message.
     def NextOutgoing(self):
-        self.__lock.acquire()
+        self.AcquireLock()
         ret = self.__outgoing.pop(0)
-        self.__lock.release()
+        self.ReleaseLock()
         
         return ret
     
@@ -327,9 +319,9 @@ class nConnection(object):
     def AddIncoming(self, msg):
         if msg.mtype == mp.M_ACK and len(msg.replied) == 0:
             raise Exception
-        self.__lock.acquire()
+        self.AcquireLock()
         self.__incoming.append(msg)
-        self.__lock.release()
+        self.ReleaseLock()
         
     ## Returns True if there are incoming messages to process, false otherwise.
     def HasIncoming(self):
@@ -350,21 +342,15 @@ class nConnection(object):
     def port(self):
         return self.__port
     
-    ## Returns the player for the connection
-    def player(self):
-        return self.__player
-    
-    def setPlayer(self, name):
-        self.__player = name
-    
     ## Return a string for the connection
     def __str__(self):
-        return self.__player + "@" + self.__host + ":" + str(self.__port)
+        #return self.__player + "@" + self.__host + ":" + str(self.__port)
+        return self.__host + ":" + str(self.__port)
     
     def __eq__(self, other):
         if type(other) == type(self):
             ## This is the main comparison, the other two are simply integrity checks.  Or this is a bug.
-            if self.__id == other.__id:
+            if self.id() == other.id():
                 if other.host() == self.__host:
                     if other.port() == self.__port:
                         return True
@@ -376,9 +362,58 @@ class nConnection(object):
         return False
         
 
-## This class is a list of connections.  It behaves like a list, and ideally should be able
+# Convenient line to copy the global statement for methods that need it.
+# global C_OK, C_SILENT, C_TIMINGOUT, C_TIMEOUT
+
+## The last ID assigned to a connection
+__lastId = 0
+
+def GetConId():
+    global __lastId
+    
+    __lastId += 1
+    
+    return __lastId
+
+## This class represents a connection to a server from the client.
+class ClientConnection(ConnectionBase):
+    def __init__(self, **args):
+        super().__init__(**args)
+
+## This class represents a single connection on the server with a client.  Currently, only one
+#  player per connected client is supported.
+class ServerConnection(ConnectionBase):
+    ## When you instantiate an nConnection, you must give it a host and port.  There's
+    #  no such thing as a connection without one.
+    def __init__(self, **args):
+        super().__init__(**args)
+        global C_OK, C_SILENT, C_TIMINGOUT, C_TIMEOUT
+        
+        self.__player = args['player']
+            
+    ## Tell the connection to login, which at this time consists of sending an ack to the connected
+    #  client and starting connection maintenance.
+    def Login(self, loginPacket):
+        # Send the ack.
+        msg = self.Pedia().GetMessageType('ack')()
+        msg.mtype = self.Pedia().GetMessageId('ack')
+        msg.replied.append(loginPacket.id)
+        
+        self.AddOutgoing(msg)
+        
+        self.Owner().AddEvent('login', loginPacket)
+        
+    ## Returns the player for the connection
+    def player(self):
+        return self.__player
+    
+    def setPlayer(self, name):
+        self.__player = name
+    
+
+## This class is a list of connections on the server.  It behaves like a list, and ideally should be able
 #  to be used exactly like a list.
-class nConnectionList(object):
+class ServerConnectionList(object):
     __connections = None
     
     def __init__(self):
@@ -390,7 +425,7 @@ class nConnectionList(object):
     ## Create a new connection that points to the address given by address.
     def Create(self, address, player, server):
         if address not in self.__connections:
-            newCon = nConnection(address[0], address[1], player, server)
+            newCon = ServerConnection(address[0], address[1], player, server)
             self.append(newCon)
             
             return newCon

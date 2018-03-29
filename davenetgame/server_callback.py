@@ -100,9 +100,11 @@ class ServerCallback(object):
         self.RegisterCommand('help', self.consoleHelp, "help [command]", "print(this helpful text.  Alternately, type in a command to see its helpful text.")
         self.RegisterCommand('quit', self.consoleQuit, "quit", "Quit the server.")
 
-        self.RegisterMessageCallback('login', self.cbLogin)
-        self.RegisterMessageCallback('logout', self.cbLogout)
-        self.RegisterEventCallback('timeout', self.cbTimeout)
+        self.RegisterMessageCallback('login', self.LoginMessage)
+        self.RegisterEventCallback('login', self.LoginEvent)
+        self.RegisterMessageCallback('logout', self.LogoutMessage)
+        self.RegisterEventCallback('logout', self.LogoutEvent)
+        self.RegisterEventCallback('timeout', self.TimeoutEvent)
 
     ## @name Regular API
     #
@@ -124,7 +126,7 @@ class ServerCallback(object):
     ## Call to start the server.  Also starts the console.
     def StartServer(self):
         self.__console.Start()
-        self.__server = server.nServer(self)
+        self.__server = server.nServer(owner = self)
         self.__setupCallbacks()
         
         self.__server.ListenOn(self.__host, self.__port)
@@ -178,18 +180,26 @@ class ServerCallback(object):
     #  them in your subclass.
     #@{
     
-    ## This callback is called when a user has successfully logged in.  Default implementation just prints to stdout.
-    def cbLogin(self, **args):
+    ## Callback for login messages.
+    def LoginMessage(self, **args):
+        pass
+    
+    def LogoutMessage(self, **args):
+        pass
+    
+    ## This callback is called when a user has successfully logged in.  Default implementation 
+    #  just prints to stdout.
+    def LoginEvent(self, **args):
         print("User " + connection.player() + " has logged in.")
 
-    def cbLogout(self, **args):
+    def LogoutEvent(self, **args):
         print("User " + connection.player() + " has logged out.")
 
-    def cbTimeout(self, **args):
+    def TimeoutEvent(self, **args):
         print("User " + playername + " has timed out.")
         
-    def cbChat(self, **args):
-        print(connection.player() + ": "
+    def ChatMessage(self, **args):
+        print(connection.player() + ": ")
 
     #@}
     
@@ -220,9 +230,9 @@ class ServerCallback(object):
     #  will be used.
     def __setupCallbacks(self):
         for cb in self.__callback_events:
-            self.__server.RegisterEventCallback(cb[0], cb[1], cb[2])
+            self.Owner().RegisterEventCallback(cb[0], cb[1], cb[2])
         for cb in self.__callback_messages:
-            self.__server.RegisterMessageCallback(cb[0], cb[1], cb[2])
+            self.Owner().RegisterMessageCallback(cb[0], cb[1], cb[2])
     #@}
 
     ## @name Console API

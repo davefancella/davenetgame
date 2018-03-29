@@ -28,6 +28,9 @@ class ClientCallback(object):
     __port = None
     __name = None
     __client = None
+    __callback_events = None
+    __callback_messages = None
+    __connection = None
 
     def __init__(self, **args):
         self.__host = 'localhost'
@@ -39,6 +42,8 @@ class ClientCallback(object):
         if 'port' in args:
             self.SetPort = args['port']
             
+        # @@todo Write the part that connects the callbacks to the client object
+
     def SetHost(self, host):
         self.__host = host
         
@@ -51,11 +56,14 @@ class ClientCallback(object):
     def Start(self):
         self.__client = client.nClient()
         self.__client.SetServer(self.__host, self.__port)
+        self.__setupCallbacks()
         self.__client.Start()
         
-        self.__client.Login(self.__name)
-
-        # @@todo Write the part that connects the callbacks to the client object
+        self.__connection = connection.ClientConnection(host = self.__host,
+                                                        port = self.__port,
+                                                        owner = self.__client)
+        
+        self.__connection.Login(self.__name)
 
     ## Stops the client.  Call will block until the client thread has stopped.
     def Stop(self):
@@ -90,5 +98,37 @@ class ClientCallback(object):
     ## Returns a string indicating the status of the connection.
     def StatusString(self):
         return connection.statuslist[self.__client.Status()][1]
+
+    ## @name Internal
+    #
+    #  These methods are for internal use only.  Users should not use them unless there's
+    #  absolutely no other way to do whatever it is they're trying to do, and they haven't
+    #  figured out they shouldn't do it, whatever it is.
+    #@{
+
+    ## Register an event callback.  Games *can* use this, but the mechanism isn't terribly useful.  
+    #  For the most part,
+    #  simply implement the required callback methods in this class to receive callbacks.  
+    #  Required callbacks will
+    #  throw an exception.
+    def RegisterEventCallback(self, name, func, options={}):
+        self.__callback_events.append([name, func, options])
+
+    ## Register a message callback.  Games *can* use this, but the mechanism isn't terribly useful.  
+    #  For the most part,
+    #  simply implement the required callback methods in this class to receive callbacks.  
+    #  Required callbacks will
+    #  throw an exception.
+    def RegisterMessageCallback(self, name, func, options={}):
+        self.__callback_messages.append([name, func, options])
+
+    ## This method is called after the server is started to register all the callbacks that 
+    #  will be used.
+    def __setupCallbacks(self):
+        for cb in self.__callback_events:
+            self.Owner().RegisterEventCallback(cb[0], cb[1], cb[2])
+        for cb in self.__callback_messages:
+            self.Owner().RegisterMessageCallback(cb[0], cb[1], cb[2])
+    #@}
         
         

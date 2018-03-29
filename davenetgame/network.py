@@ -38,8 +38,8 @@ class NetworkBase(threading.Thread):
     ## Bytes sent
     _bytessent = None
     
-    ## Buffer size, used for all connections, since you can't know which connection has sent you a packet
-    #  until you do the socket read.
+    ## Buffer size, used for all connections, since you can't know which connection has sent 
+    #  you a packet until you do the socket read, and you need this to do the read.
     _buffersize = None
     
     ## The list of callbacks that will be called.
@@ -49,11 +49,11 @@ class NetworkBase(threading.Thread):
     #  during the server's update method, which is called from the main thread.
     callbackqueue = None
     
-    ## The owner of this Network object.  Probably not useful, but we keep it nonetheless.
+    ## The owner of this Network object.
     __owner = None
         
     def __init__(self, **args):
-        super().__init__(self, **args)
+        super().__init__(**args)
 
         if 'owner' in args:
             self.__owner = args['owner']
@@ -96,15 +96,16 @@ class NetworkBase(threading.Thread):
         
         return cbList.GetCallback(ctype, name)
     
-    ## Appends a callback object to the callbackqueue.
+    ## Appends a callback object to the callbackqueue.  Callbackqueue only takes event callbacks.
+    #  Message callbacks are handled immediately from within the socket polling thread.
     def AppendCallback(self, cb):
         self.callbackqueue.append(cb)
 
     ## Used to acquire a lock when working with data structures shared with the main thread
     def AcquireLock(self):
-        pass
+        self.__lock.acquire()
     
     ## Used to release the lock when done working with data structures shared with the main thread
     def ReleaseLock(self):
-        pass
+        self.__lock.release()
 

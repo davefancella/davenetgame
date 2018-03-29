@@ -35,11 +35,13 @@
 #  actual members of the message.  In other situations, the callback arguments will be specified
 #  by the documentation for the appropriate situation.
 
-## The callback list object.  This object stores the master list of all registered callbacks.
-#  It is a singleton, so you can retrieve the list by calling GetCallbackList, however, this
-#  should only be used internally.  Callbacks should normally be registered using the appropriate
-#  methods in the client/server callback object, even though those objects are just going to
-#  store the callbacks here anyway.
+## The callback list object.  This object stores a list of callbacks.  It is used internally
+#  to store registered callbacks by the Transport object as well as the Protocol object.  It
+#  can be used by an EventDispatcher object as well, but is not required.
+#
+#  By default, callbacks are stored as lists for the event to which they refer.  This means
+#  that multiple callbacks can be registered for the same event, and they will be called in
+#  arbitrary order, unless specified otherwise by callback options.
 class CallbackList(object):
     ## The actual callback list
     __callbacks = None
@@ -48,65 +50,50 @@ class CallbackList(object):
         super().__init__()
         
         self.__callbacks = {
-                    "message" : {},
-                    "event" : {},
         }
 
     ## Register a callback.
     #
-    #  @param ctype the type of the callback.  Current choices are "message" and "event",
-    #               referring, of course, to network messages and network events.
     #  @param name the name of the callback.  It should be a specific message or event type,
     #               such as "chat" or "login" or "timeout".
     #  @param func the function that will be called.  It should take a keyword list of arguments.
     #  @param options the options for the callback, which depends on the callbck type.
-    def RegisterCallback(self, ctype, name, func, options={}):
-        if ctype in self.__callbacks:
-            if name not in self.__callbacks[ctype]:
-                self.__callbacks[ctype][name] = {
-                                    'callback' : func,
-                                    'options' : options,
-                                    }
-            else:
-                pass
-                # @todo Raise an exception if someone tries to register more than one callback
-                #       for the same ctype and name.
-    
-    ## Gets a callback object for a specific event/message.
+    def RegisterCallback(self, name, func, options={}):
+        if name not in self.__callbacks:
+            self.__callbacks[name] = []
+            
+        self.__callbacks[name].append({
+                                'callback' : func,
+                                'options' : options,
+                                } )
+
+    ## Gets the list of callback objects for a specific name.  These callback objects can
+    #  then be executed immediately, if desired, or scheduled to be executed later, for example
+    #  by a different thread.  See Callback for more information.
     # 
-    #  @param ctype the type of the callback, either 'message' or 'event'
     #  @param name the name of the callback.
-    def GetCallback(self, ctype, name):
-        if ctype in self.__callbacks:
-            if name in self.__callbacks[ctype]:
-                return callback.Callback(name=name, 
-                                         callback=self.__callbacks[ctype][name]['callback'], 
-                                         options=self.__callbacks[ctype][name]['options'] )
-            else:
-                pass
-                # @todo Throw an exception here for not finding the callback.
+    def GetCallbacks(self, name):
+        if name in self.__callbacks:
+            retList = []
+            for a in self.__callbacks[name]:
+                retList.append( callback.Callback(name=name, 
+                                        callback=a['callback'], 
+                                        options=a['options'] ) )
+            return retList
+
         # @todo Throw an exception here for not finding the callback type.
         return None
     
     ## Returns the options for the specified callback.  It does not return the actual callback
-    #  itself, just the options for it.
-    def GetCallbackOptions(self, ctype, name):
-        if ctype in self.__callbacks:
-            if name in self.__callbacks[ctype]:
-                return self.__callbacks[ctype][name]['options']
+    #  itself, just the options for it.  Note that only the options for the first registered
+    #  callback are returned, and those are usually supplied by the library.
+    def GetCallbackOptions(self, name):
+        if name in self.__callbacks:
+            return self.__callbacks[name][0]['options']
             
         # @todo EXCEPTIONS EVERYWHERE NEED THEM EVERYWHERE!!!!
         return None
     
-__callbacklist = None
-
-def GetCallbackList():
-    global __callbacklist
-    
-    if __callbacklist is None:
-        __callbacklist = CallbackList()
-        
-    return __callbacklist
 
 ## The callback class, used when a callback has to be queued up to be called from the main thread.
 class Callback(object):
@@ -148,21 +135,13 @@ class Callback(object):
     
     ## Actually calls the callback.
     #
-    #  @param args A dictionary containing the arguments intended.  It will override the __args
-    #              member, in the event of a conflict.
-    def callback(self, **args):
-        if len(args) = 0:
-            self.__callback(**self.__args)
-        else:
-            self.__callback(**args)
+    #  @param args An optional dictionary containing any additional arguments intended for the
+    #              callback.  It will be added to the local __args member, if provided.
+    def Call(self, **args):
+        theArgs = self.__args
+        if len(args) > 0:
+            for key, value in args:
+                theArgs[key] = value
         
-    def getcallback(self):
-        return self.__callback
-        
-    ## Returns a copy of this object, setting the arguments to **args
-    @classmethod
-    def new(cls, **args):
-        newObj = cls(**args)
-        
-        return newObj
+        self.__callback(**theArgs)
 
