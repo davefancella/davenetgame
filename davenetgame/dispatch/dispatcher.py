@@ -18,18 +18,13 @@
 
 '''
 
-# Builds the game, whatever stuff has to be processed.  This is a quick and dirty solution,
-# only intended for early development.  It should be replaced with a proper setup.py file at some point.
+from davenetgame.dispatch.base import DispatcherBase
 
-print "Building Dave's Stupid Network Game Library"
-print
-print "Building protocol files"
+## @file dispatcher
+#
+#  This file contains the standard, generic EventDispatcher class.  It's the one you use if
+#  the library doesn't support your preferred game engine, or if you'd rather manage the library
+#  independently of your game engine.
+class EventDispatcher(DispatcherBase):
+    pass
 
-#cd ./davenetgame/messages
-#pwd
-
-#for a in *.proto
-#do
-#    echo "Building $a"
-#    protoc -I=./ --python_out=./ ./$a
-#done

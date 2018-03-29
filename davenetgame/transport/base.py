@@ -94,6 +94,20 @@ class TransportBase(threading.Thread):
 
         if 'owner' in args:
             self.__owner = args['owner']
+        
+        self.__isserver = False
+        
+        if 'isserver' in args:
+            self.SetServer(args['isserver'])
+            
+        self.__clienthost = ''
+        self.__clientport = None
+        
+        if 'clienthost' in args:
+            self.__clienthost = args['clienthost']
+        
+        if 'clientport' in args:
+            self.__clientport = args['clientport']
 
         self.__lock = threading.RLock()
         
@@ -108,8 +122,6 @@ class TransportBase(threading.Thread):
         
         self.__continue = False
     
-        self.__isserver = False
-        
     ## Call to tell the subclass it will function as a server.  It is needed for sockets to
     #  bind to a listening socket as a server.  Clients typically don't need to worry about
     #  that.

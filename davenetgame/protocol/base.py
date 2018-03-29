@@ -74,6 +74,11 @@ class ProtocolBase(object):
             self.RegisterMessageCallback('ping', self.PingMessage)
             self.RegisterMessageCallback('ack', self.AckMessage)
             
+    ## Call to determine if this is the core protocol object.  Used by the EventDispatcher
+    #  when there are multiple protocols to figure out which one to start.
+    def IsCore(self):
+        return self.__iscore
+    
     def SetHost(self, host):
         self.__host = host
         
@@ -138,6 +143,10 @@ class ProtocolBase(object):
     #  the protocol to function, and you need to add some flags to ignore pings and acks.
     def Start(self):
         raise NotImplementedError
+
+    ## The actual method called to start the protocol, used internally.
+    def _start(self):
+        self.Start()
 
     ## Register a message callback.  Games *can* use this, but the mechanism isn't terribly useful.  
     #  For the most part,

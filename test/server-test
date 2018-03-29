@@ -27,14 +27,22 @@ import readline
 import sys
 sys.path.insert(0, '')
 
-from davenetgame import server_callback
- 
+from davenetgame.dispatch import dispatcher
+from davenetgame.transport import udp
+from davenetgame.protocol import realtime
+
 HOST = ''   # Symbolic name meaning all available interfaces
 PORT = 8888 # Arbitrary non-privileged port
  
-theServer = server_callback.ServerCallback(host = HOST,
-                                           port = PORT)
-theServer.StartServer()
+theServer = dispatcher.EventDispatcher()
+theProtocol = realtime.RealtimeProtocol( transport = udp.Udp(isserver=True,
+                                                             clienthost=HOST,
+                                                             clientport=PORT)
+                                       )
+theProtocol.BindTransport()
+
+theServer.AddProtocol(theProtocol)
+theServer.Start()
 keepGoing = True
 
 try:

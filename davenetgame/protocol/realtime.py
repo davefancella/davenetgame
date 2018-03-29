@@ -63,7 +63,6 @@ class RealtimeClient(ProtocolBase):
 
         
 class RealtimeServer(ProtocolBase):
-class ServerCallback(object):
     __host = None
     __port = None
     __console = None

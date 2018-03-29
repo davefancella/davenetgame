@@ -24,5 +24,21 @@
 #  directly to the game.
 
 class DispatcherBase(object):
-    pass
+    ## The list of protocols being used
+    __protocols = None
+    
+    def __init__(self, **args):
+        self.__protocols = []
+        
+    def AddProtocol(self, protocol):
+        self.__protocols.append(protocol)
+        
+    def Start(self):
+        for prot in self.__protocols:
+            prot.RegisterEventCallback(self.ProcessEvent)
+            if prot.IsCore():
+                prot._start()
+        
+    def ProcessEvent(self, event):
+        pass
 
