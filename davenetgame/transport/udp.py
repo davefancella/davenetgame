@@ -21,14 +21,9 @@
 ## This file contains the basic Client class, which creates a UDP client capable of connecting to
 #  the UDP server created by this library.
 
-import socket
-import threading
-import select, time
-import struct
+import socket, select, struct
 
-from davenetgame.protocol import TransportBase
-from davenetgame import pedia
-from davenetgame import connection
+from davenetgame.transport import TransportBase
 
 ## This class implements the UDP Transport class.
 class Udp(TransportBase):
@@ -40,10 +35,9 @@ class Udp(TransportBase):
 
     ## Call to start the client.
     def Start(self):
-        # Create the socket
         error = False
-        # create the socket
-        # Datagram (udp) socket
+
+        # Create the socket.
         try :
             self.__socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
             print('Socket created')
@@ -101,9 +95,7 @@ class Udp(TransportBase):
         #self.__bytessent += len(payload)
         
         self.__socket.sendto(payload, msg['connection'] )
-        
-        del msg
-        
+                
 
 
 

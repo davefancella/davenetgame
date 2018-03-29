@@ -257,9 +257,9 @@ class TransportBase(threading.Thread):
     #  @param name the name of the callback.
     #  @param func the function that will be called.  It should take a keyword list of arguments.
     def RegisterCallback(self, name, func, options={}):
-        cbList = callback.GetCallbackList()
+        #cbList = callback.GetCallbackList()
         
-        cbList.RegisterCallback('message', name, func, options)
+        #cbList.RegisterCallback('message', name, func, options)
     
     ## Gets a callback object for a specific event/message.
     def GetCallback(self, ctype, name):
