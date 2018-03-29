@@ -17,3 +17,12 @@
    limitations under the License.
 
 '''
+
+## @file dispatcher
+#
+#  This file contains the base dispatcher class, used to connect the network library 
+#  directly to the game.
+
+class DispatcherBase(object):
+    pass
+
