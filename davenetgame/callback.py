@@ -73,16 +73,18 @@ class CallbackList(object):
     # 
     #  @param name the name of the callback.
     def GetCallbacks(self, name):
+        retList = []
+        
         if name in self.__callbacks:
             retList = []
             for a in self.__callbacks[name]:
-                retList.append( callback.Callback(name=name, 
+                retList.append( Callback(name=name, 
                                         callback=a['callback'], 
                                         options=a['options'] ) )
-            return retList
+        else:
+            print("Couldn't find callback: " + str(name) )
 
-        # @todo Throw an exception here for not finding the callback type.
-        return None
+        return retList
     
     ## Returns the options for the specified callback.  It does not return the actual callback
     #  itself, just the options for it.  Note that only the options for the first registered
@@ -124,7 +126,7 @@ class Callback(object):
     ## When the callback is queued, call this to set the arguments that it'll need when called.
     #  It takes a keyword list corresponding to the network message that's being responded to,
     #  or the specific network event in the event that there's no network message associated.
-    def setargs(self, **args):
+    def setargs(self, args):
         self.__args = args
 
     def setname(self, name):

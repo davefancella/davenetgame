@@ -18,8 +18,9 @@
 
 '''
 
-import importlib
+import importlib, time
 
+from davenetgame import exceptions
 
 ## This class is the master list of all messages.  If you want to create a message, you have to
 #  get the type from here.  If you want to decode a message, you give this class the message 
@@ -53,10 +54,16 @@ class Messages(object):
     ## Message IDs for custom messages provided by library users.
     __lastCustomMessageId = None
     
+    ## The last network ID for a message created.  This should be unique from server to client,
+    #  but clients will use their own IDs when sending to the server.
+    __lastNetMessageId = None
+    
     ## Initalize the list.  if theList is not none, the messagelist will be set to whatever it is.
     def __init__(self):
         self.__lastmessageId = 0
         self.__lastCustomMessageId = 256
+        
+        self.__lastNetMessageId = 0
         
         self.__messageList = {}
         self.__messageNames = {}
@@ -88,7 +95,7 @@ class Messages(object):
     #                 is so useless that it is comical to do so.  Who doesn't like a meaningful
     #                 value of None?
     def AddMessageType(self, module, name, classname, options={}):
-        self._addMessageType(module, name, classname, False)
+        self._addMessageType(module, name, classname, options, False)
         
     ## Adds an internal message type.  Provide it with a name, and the rest is handled internally.
     #  Since the order matters, once a message has been added in a particular order, it cannot
@@ -105,7 +112,7 @@ class Messages(object):
     #                 is so useless that it is comical to do so.  Who doesn't like a meaningful
     #                 value of None?
     def AddInternalMessageType(self, name, classname, options={}):
-        self._addMessageType("davenetgame.messages", name, classname, True)
+        self._addMessageType("davenetgame.messages", name, classname, options, True)
         
     ## Used internally to actually add the message types.
     #
@@ -161,18 +168,39 @@ class Messages(object):
             theClass = getattr(mod, theMessage[2])
             self.__messageTypes[self.__messageNames[name] ] = theClass
     
+    ## Gets an instantiated message class, ready to have its details filled in and sent.  It
+    #  will already have the id, mtype, and timestamp members filled.
+    def GetMessageObject(self, theType):
+        if type(theType) == str:
+            theType = self.__messageNames[theType]
+        
+        theMsg = self.GetMessageType(theType)()
+        theMsg.mtype = theType
+        theMsg.id = self.GetNetMessageId()
+        theMsg.timestamp = time.time()
+        
+        return theMsg
+    
+    ## Gets a new net message Id.
+    def GetNetMessageId(self):
+        self.__lastNetMessageId = self.__lastNetMessageId + 1
+        
+        return self.__lastNetMessageId
+    
     ## Gets a message type, whether or not it is given a string or an ID.
     def GetMessageType(self, theType):
         retType = None
         
-        if theType in self.__messageList:
-            retType = self.__messageList[theType]
-            if type(theType) == str:
-                retType = self.__messageList[retType]
+        if type(theType) == str:
+            if theType in self.__messageNames:
+                theType = self.__messageNames[theType]
+        if theType in self.__messageTypes:
+            retType = self.__messageTypes[theType]
         
         return retType
         
     ## Gets a type ID for the message being sent
+    #  TODO: Determine if this is even being used, and if not, get rid of it.
     def GetTypeID(self, msg):
         for key, value in self.__messageList.items():
             if type(msg) == value:
@@ -180,8 +208,9 @@ class Messages(object):
     
     ## Gets the message name, as a string, when given an ID
     def GetTypeName(self, Id):
-        if Id in self.__messageTypes:
-            return self.__messageTypes[Id]
+        for key,value in self.__messageNames.items():
+            if Id == value:
+                return key
     
     ## Gets the message options without creating a type object for them.
     def GetMessageOptions(self, Id):

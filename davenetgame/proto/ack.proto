@@ -20,6 +20,6 @@ message Ack {
     required fixed32 id = 1;
     required fixed32 mtype = 2;
     required double timestamp = 3;
-    repeated uint32 replied = 4;
+    required uint32 replied = 4;
 }
 

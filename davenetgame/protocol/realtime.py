@@ -19,10 +19,15 @@
 '''
 
 from davenetgame.protocol.base import ProtocolBase
-#from davenetgame import connection
+from davenetgame.protocol import connection
 
 class RealtimeClient(ProtocolBase):
+    ## The connection to the server.
+    __connection = None
+    
     def __init__(self, **args):
+        super().__init__(**args)
+        
         if 'host' in args:
             self.SetHost = args['host']
         if 'port' in args:
@@ -31,44 +36,59 @@ class RealtimeClient(ProtocolBase):
         self.RegisterMessageCallback('login', self.LoginMessage)
         self.RegisterMessageCallback('logout', self.LogoutMessage)
 
-    def LoginMessage(self, typeId, msg, connection):
-        pass
+    ## @name Callback Methods
+    #
+    #  These are the callback methods for particular messages.
+    #@{
+    
+    ## This is the callback for login messages.  On the client, when a login message is received,
+    #  it is telling the client that another client has logged into the server.
+    def LoginMessage(self, **args):
+        self.Ack(args['message'].id, self.Connection() )
+        
+        self.Connection().SetId(args['message'].con_id)
+        self.Connection().set_lastrecv(args['timestep'] )
+        
+        #TODO: emit an event indicating that the login is complete
+        print('The server has logged you in.')
 
     def LogoutMessage(self, typeId, msg, connection):
         pass
+    
+    #@}
 
-    ## Starts the client, initiating a connection to the server.  Don't do this until you've set the host
-    #  and port number correctly!
+    ## @name Protocol Send Methods
+    #
+    #  These are the methods used to send messages that are part of the protocol.  While there
+    #  is usually a 1:1 relationship between these methods and actual messages that are to be
+    #  sent, it's not required.  You should think of this more like the human ways of sending
+    #  a message, where you don't just say one thing to someone.  You might need to blow up
+    #  their car and burn down their house, which would all require three different message types
+    #  to be sent.
+    #@{
+    
+    ## This causes a Login message to be sent to the server, indicating that the client would
+    #  like to join the party.
+    def LoginSend(self):
+        theMsg = self.Pedia().GetMessageObject('login')
+        theMsg.player = self.Name()
+        
+        self.AddOutgoingMessage(theMsg, self.Connection() )
+    #@}
+
+    ## Starts the client, initiating a connection to the server.  Don't do this until you've 
+    #  set the host and port number correctly!
     def Start(self):
-        self.__client = client.nClient()
-        self.__client.SetServer(self.__host, self.__port)
-        self.__setupCallbacks()
-        self.__client.Start()
+        host, port = self.Host(), self.Port()
+        self.ConnectionList().append(connection.Connection(host=host, port=port ) )
         
-        self.__connection = connection.ClientConnection(host = self.__host,
-                                                        port = self.__port,
-                                                        owner = self.__client)
-        
-        self.__connection.Login(self.__name)
+        self.LoginSend()
 
-    ## Stops the client.  Call will block until the client thread has stopped.
+    ## Cleanup after the thread has been closed.
     def Stop(self):
-        self.Logout()
-        self.__client.Stop(True)
-        
-        # delete the client object, so that if we start again, we can create a new one.
-        self.__client = None
-
+        pass
         
 class RealtimeServer(ProtocolBase):
-    __host = None
-    __port = None
-    __console = None
-    __server = None
-    __consolecommands = None
-    __callback_events = None
-    __callback_messages = None
- 
     ## Constructor.  Pass it a dictionary with any of the following keys to initialize them:
     #      host : the host that will be listened to by the socket.
     #      port : the port on which the socket will listen
@@ -104,11 +124,27 @@ class RealtimeServer(ProtocolBase):
     #  These are the callback methods for particular messages.
     #@{
     
-    ## Callback for login messages.
+    ## Callback for login messages.  This means that a client is trying to login.
     def LoginMessage(self, **args):
-        pass
+        print("Received login from " + str(args['connection'][0]) + ":" + str(args['connection'][1]) )
+        
+        newConnection = self.ConnectionList().Create(args['connection'], args['message'].player)
+        
+        newConnection.set_lastrecv(args['timestep'])
+        
+        self.Ack(args['message'].id, newConnection)
+        
+        theMsg = self.Pedia().GetMessageObject('login')
+        theMsg.con_id = newConnection.id()
+        theMsg.player = newConnection.player()
+        
+        self.AddOutgoingMessage(theMsg, newConnection)
+        
+        #TODO: emit an event for the login so the game can create a player for this connection
+        
     
-    ## Callback for logout messages
+    ## Callback for logout messages.  This means that a client is signaling it is disconnecting
+    #  from the server.
     def LogoutMessage(self, **args):
         pass
     

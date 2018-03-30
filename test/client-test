@@ -18,28 +18,20 @@
 
 '''
 
-import socket
-
 import sys
 sys.path.insert(0, '')
 
 from davenetgame import exceptions
-import getpass # for convenience
+from davenetgame import paths
 
 import readline
-from davenetgame import client_callback
-from davenetgame.messages import pedia
-
-# create dgram udp socket
-try:
-    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-except socket.error:
-    print('Failed to create socket')
-    sys.exit()
+from davenetgame.dispatch import dispatcher
+from davenetgame.transport import udp
+from davenetgame.protocol import realtime
  
 host = 'localhost'
 port = 8888
-name = getpass.getuser()
+name = paths.GetUsername()
 
 print("Starting test client.")
 
@@ -62,8 +54,6 @@ commands = {
     'quit' : { 'usage' : "quit",
               'desc'  : "Quit the test client." },
 }
-
-messageList = pedia.getPedia()
 
 def Help(command=None):
     global commands
@@ -119,9 +109,16 @@ try:
                     if name is not None:
                         # Create the client object and login
                         if theClient is None:
-                            theClient = client_callback.ClientCallback()
-                            theClient.SetHost(host)
-                            theClient.SetPort(port)
+                            theClient = dispatcher.EventDispatcher()
+                            theProtocol = realtime.RealtimeClient( 
+                                                        core = True
+                                                        )
+                            theTransport = transport = udp.Udp(owner = theProtocol,
+                                                               serverhost=host,
+                                                               serverport=port)
+                            theProtocol.BindTransport(theTransport)
+
+                            theClient.AddProtocol(theProtocol)
                             theClient.Start()
                 else:
                     print("You must specify a port to connect to")
@@ -144,7 +141,7 @@ try:
             if theClient is None:
                 print("You must be connected to a server to ping!")
             else:
-                theClient.SendPing()
+                theProtocol.SendPing()
         elif command == "status":
             if theClient is None:
                 print("You are not connected to a server.")

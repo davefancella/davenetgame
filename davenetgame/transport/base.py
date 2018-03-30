@@ -21,6 +21,8 @@
 import threading, time
 
 from davenetgame import callback
+from davenetgame import exceptions
+from davenetgame import pedia
 
 ## @file
 #
@@ -91,6 +93,8 @@ class TransportBase(threading.Thread):
 
         if 'owner' in args:
             self.__owner = args['owner']
+        else:
+            raise exceptions.dngExceptionNotImplemented("Transport does not have owner, cannot instantiate.")
         
         self.__isserver = False
         
@@ -225,16 +229,24 @@ class TransportBase(threading.Thread):
     #                     was received, usually a (host,port) tuple.  It has to be understood
     #                     by the connection object.
     def ProcessMessage(self, typeId, msg, connectInfo):
-        buf = self.__pedia.GetMessageType(typeId)()
-        buf.ParseFromString(payload)
+        buf = pedia.getPedia().GetMessageObject(typeId)
         
-        theCbs = self.GetCallbacks(typeId)
+        typeName = pedia.getPedia().GetTypeName(typeId)
+
+        buf.ParseFromString(msg)
         
+        theCbs = self.GetCallbacks(typeName)
+
+        # We pass a timestep to every handler so they can update connections accordingly
+        timestep = time.time()
+
         for cb in theCbs:
-            cb.SetArgs({ 'message':msg , 'connection':connectInfo } )
+            cb.setargs( { 'message' : buf,
+                          'connection' : connectInfo,
+                          'timestep' : timestep } )
             cb.Call()
 
-    ## Call to get outgoing messages from the Protocol object.  Each message will be already
+    ## Call to get outgoing messages from the owner object.  Each message will be already
     #  serialized, so the return value of this method is a list of dicts, where each item
     #  is of the form:
     #      'message' : the serialized message
@@ -242,8 +254,7 @@ class TransportBase(threading.Thread):
     #      'connection' : a (host,port) tuple that is the connection to which the message
     #                     must be sent.
     def GetOutgoingMessages(self):
-        # Todo: Obviously implement this when working on the ProtocolBase object.
-        return []
+        return self.__owner.GetOutgoingMessages()
 
     ## Starts the socket polling.  Don't call this directly, instead call Start().  Also,
     #  you *must* implement PollSocket in your subclass.  It will be called automatically,
@@ -252,8 +263,15 @@ class TransportBase(threading.Thread):
     def run(self):
         # now keep talking with the other side
         while self.Continue():
+            # First, poll the socket and handle incoming messages
             self.PollSocket()
             
+            # Second, maintain connections.  This is in the middle because outgoing messages
+            # will be generated, and we want to make sure to send those in this loop iteration
+            # rather than waiting for the next time around.
+            self.__owner.MaintainConnections()
+            
+            # Last, send all outgoing messages.
             for msg in self.GetOutgoingMessages():
                 self.SendMessage(msg)
             
@@ -264,16 +282,11 @@ class TransportBase(threading.Thread):
     #  @param name the name of the callback.
     #  @param func the function that will be called.  It should take a keyword list of arguments.
     def RegisterCallback(self, name, func, options={}):
-        pass
-        #cbList = callback.GetCallbackList()
-        
-        #cbList.RegisterCallback('message', name, func, options)
+        self.__callbacks.RegisterCallback(name, func, options)
     
-    ## Gets a callback object for a specific event/message.
-    def GetCallback(self, ctype, name):
-        cbList = callback.GetCallbackList()
-        
-        return cbList.GetCallback('message', name)
+    ## Gets a callback list for a specific event/message.
+    def GetCallbacks(self, name):
+        return self.__callbacks.GetCallbacks(name)
     
     ## Used to acquire a lock when working with data structures shared with the main thread
     def AcquireLock(self):

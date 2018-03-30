@@ -30,6 +30,11 @@
 class dngException(Exception):
     pass
 
+## Raise this exception when you haven't yet implemented a specific exception type, but need
+#  to raise an exception anyway
+class dngExceptionNotImplemented(dngException):
+    pass
+
 ## This exception is thrown when a required callback method hasn't been implemented.
 class dngCallbackNotImplemented(dngException, NotImplementedError):
     pass

@@ -20,6 +20,7 @@ message Login {
     required fixed32 mtype = 2;
     required double timestamp = 3;
     required string player = 4;
+    optional fixed32 con_id = 5;
 }
 
 
