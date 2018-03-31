@@ -91,12 +91,12 @@ class nSyncAttribute(object):
     def __setattr__(self, name, value):
         if name == "value":
             if isinstance(value, self._type):
-                super(nSyncAttribute, self).__getattribute__("_isdirty") = True
-                super(nSyncAttribute, self).__getattribute__("_value") = value
+                super(nSyncAttribute, self).__setattr__("_isdirty", True)
+                super(nSyncAttribute, self).__setattr__("_value", value)
             else:
                 raise exceptions.dngSyncAttributeTypeError
         else:
-            super(nSyncAttribute, self).__getattribute__(name) = value
+            super(nSyncAttribute, self).__setattr__(name, value)
     
 
 ## nSyncObject is the class from which game objects that need to be synced must inherit.  After initializing
@@ -126,7 +126,7 @@ class nSyncObject(object):
     ## This init method should be called as soon as possible in subclasses so that an ID can be
     #  established.
     def __init__(self):
-        super(nSyncObject, self).__init__()
+        super().__init__()
         self.__attributes = {}
         
         self._isdirty = True
@@ -149,7 +149,7 @@ class nSyncObject(object):
 
     ## Add an attribute for this object.
     #
-    #  @param 
+    #  @param name
     #                           'name' : The name of the attribute.
     #                           'type' : The type of the attribute.  Must be a type object.
     #                           'static' : Indicates that the value cannot be changed.  Default is False.
@@ -266,7 +266,7 @@ __synclist = None
 def GetSyncList():    
     global __synclist
 
-    if __synclist = None:
+    if __synclist == None:
         __synclist = nSyncList()
 
     return __synclist
@@ -275,7 +275,7 @@ def GetSyncList():
 def GetGameObjectList():
     global __gameobjlist
     
-    if __gameobjlist = None:
+    if __gameobjlist == None:
         __gameobjlist = nGameObjects()
         
     return __gameobjlist

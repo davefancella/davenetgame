@@ -155,7 +155,9 @@ class TransportBase(threading.Thread):
 
     ## Call to determine if the thread should continue.
     def Continue(self):
-        return self.__continue
+        ret = self.__continue
+        
+        return ret
     
     ## Use to change whether or not the thread should continue.
     #

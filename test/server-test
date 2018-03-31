@@ -20,7 +20,7 @@
 '''
 
 from time import sleep
-import time
+import time, sys
 
 import readline
 
@@ -31,32 +31,64 @@ from davenetgame.dispatch import dispatcher
 from davenetgame.transport import udp
 from davenetgame.protocol import realtime
 
-HOST = ''   # Symbolic name meaning all available interfaces
-PORT = 8888 # Arbitrary non-privileged port
- 
-theServer = dispatcher.EventDispatcherServer()
-theProtocol = realtime.RealtimeServer(
-                                       core = True
-                                       )
-theTransport = udp.Udp(isserver=True,
-                        clienthost=HOST,
-                        clientport=PORT,
-                        owner=theProtocol)
-theProtocol.SetTransport(theTransport)
-theProtocol.BindTransport()
+from davenetgame.gameobjects import player
 
-theServer.AddProtocol(theProtocol)
-theServer.Start()
-keepGoing = True
-
-try:
-    while(keepGoing) :
-        theServer.Update(time.time() )
+# For the test server, this is a brief and mostly useless game engine whose purpose in life
+# is to make it possible for us to examine the game state of a simple game while testing parts
+# of the library
+class Game(object):
+    # Connected players
+    __players = None
+    
+    def __init__(self, **args):
+        self.__players = []
         
-except KeyboardInterrupt:
-    print("Quitting due to keyboard interrupt")
+    def LoginEvent(self, **event):
+        aPlayer = player.nPlayer(connection=event['data'] )
+        
+        print(aPlayer.playername + " has logged in.")
+    
+if __name__=='__main__':
+    HOST = ''   # Symbolic name meaning all available interfaces
+    PORT = 8888 # Arbitrary non-privileged port
 
-theServer.Stop()
-print()
+    # First, set up the network library.
+    
+    theServer = dispatcher.EventDispatcherServer()
+    theProtocol = realtime.RealtimeServer(
+                                        core = True
+                                        )
+    theTransport = udp.Udp(isserver=True,
+                            clienthost=HOST,
+                            clientport=PORT,
+                            owner=theProtocol)
+    theProtocol.SetTransport(theTransport)
+    theProtocol.BindTransport()
+
+    theServer.AddProtocol(theProtocol)
+
+    # Second, setup the game object
+    theGame = Game()
+    theServer.RegisterCallback('login', theGame.LoginEvent)
+
+    # Third, start the server
+    theServer.Start()
+    keepGoing = True
+
+    try:
+        while(keepGoing) :
+            theServer.Update(time.time() )
+            
+    except KeyboardInterrupt:
+        print("Quitting due to keyboard interrupt")
+
+    theServer.Stop()
+    print()
+
+    sys.exit()
+
+    
+    
+    
 
 

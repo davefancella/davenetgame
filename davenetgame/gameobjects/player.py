@@ -26,8 +26,18 @@ from davenetgame.gameobjects import sync
 #  This class implements a basic Player object.  It is intended to be subclassed by games to
 #  provide more details about the player.
 class nPlayer(sync.nSyncObject):
-    __connection_id = None
+    __connection = None
 
     def __init__(self, **args):
-        super().__init__(**args)
+        super().__init__()
+        
+        self.__connection = args['connection']
+        
+        self.AddAttribute(name="playername",
+                          type=str,
+                          initial=self.__connection.player() )
+        
+        self.Finalize()
+        
+        
         

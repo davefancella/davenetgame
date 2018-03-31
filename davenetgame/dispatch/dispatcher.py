@@ -124,7 +124,9 @@ class EventDispatcherServer(DispatcherBase):
 
     ## Console command: quit
     def consoleQuit(self, *args):
+        print("Quit signaled from console.")
         self.Stop()
+        self.__console.Stop()
 
     ## Call to register console commands with the server.  The library implements a number of standard
     #  commands, but games may need their own commands.  In that case, you will need your own callbacks.
@@ -210,7 +212,7 @@ class ConsoleInput(threading.Thread):
     ## Starts the console input.  Don't call this directly, instead call Start().
     def run(self):
         while self.__continue:
-            msg = input('')
+            msg = input(': ')
             self.__lock.acquire()
             self.__pcommands.append(msg.strip() )
             self.__lock.release()

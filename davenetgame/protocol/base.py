@@ -193,7 +193,7 @@ class ProtocolBase(object):
         
         # Now, send pings and update connection status.
         if (timestep - con.lastping() ) > 0.98:
-            self.Ping(timestep)
+            self.Ping(con)
 
         timeinterval = timestep - con.lastrecv()
         

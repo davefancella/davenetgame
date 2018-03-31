@@ -18,6 +18,8 @@
 
 '''
 
+from davenetgame import callback
+
 ## @file dispatcher
 #
 #  This file contains the base dispatcher class, used to connect the network library 
@@ -30,8 +32,13 @@ class DispatcherBase(object):
     ## The core protocol being used
     __core_protocol = None
     
+    ## The list of callback functions for events
+    __callbacks = None
+    
     def __init__(self, **args):
         self.__protocols = []
+        
+        self.__callbacks = callback.CallbackList()
         
         if 'protocols' in args:
             self.__protocols = args['protocols']
@@ -57,5 +64,23 @@ class DispatcherBase(object):
         self.__core_protocol._stop()
         
     def ProcessEvent(self, event):
-        print(event)
+        for cb in self.GetCallbacks(event['type']):
+            print(event)
+            cb.setargs(event)
+            cb.Call()
+
+    ## Register an event callback.
+    #
+    #  @param etype the type of event for which this callback will be called.
+    #  @param func the function that will be called.  It should take a keyword list of arguments.
+    def RegisterCallback(self, etype, func, options={}):
+        self.__callbacks.RegisterCallback(etype, func, options)
+    
+    ## Gets a callback list for a specific event/message.
+    def GetCallbacks(self, etype):
+        return self.__callbacks.GetCallbacks(etype)
+    
+
+
+
 

@@ -134,7 +134,10 @@ class RealtimeServer(ProtocolBase):
         self.AddOutgoingMessage(theMsg, newConnection)
         
         #TODO: emit an event for the login so the game can create a player for this connection
-        
+        self.EmitEvent( {'name' : 'Login',
+                         'type' : 'login',
+                         'data' : newConnection
+                         } )
     
     ## Callback for logout messages.  This means that a client is signaling it is disconnecting
     #  from the server.

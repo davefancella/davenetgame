@@ -61,9 +61,10 @@ class Udp(TransportBase):
     
     ## Cleanup the socket.
     def Stop(self):
-        self.__socket.close()
-        del self.__socket
-        self.__socket = None
+        if self.__socket is not None:
+            self.__socket.close()
+            del self.__socket
+            self.__socket = None
 
     ## Polls the socket.
     def PollSocket(self):
