@@ -38,8 +38,9 @@ class DispatcherBase(object):
             
         self.__core_protocol = None
     
+    ## Call this every time your game loop loops to keep events moving.  It is not optional.
     def Update(self, timestep):
-        pass
+        self.__core_protocol.Update(timestep)
     
     def AddProtocol(self, protocol):
         self.__protocols.append(protocol)

@@ -18,7 +18,7 @@
 
 '''
 
-import time
+import time, threading
 
 from davenetgame import paths
 from davenetgame import pedia
@@ -88,6 +88,9 @@ class ProtocolBase(object):
     ## The event callback function.  It will be called whenever a network even happens.
     __event_callback = None
     
+    ## The event queue.  It will be pumped by the EventDispatcher.
+    __event_queue = None
+    
     ## The local message list object.
     __pedia = None
     
@@ -100,11 +103,15 @@ class ProtocolBase(object):
     #  the entire list, or the first connection in the list.
     __connection_list = None
     
+    __lock = None
+    
     def __init__(self, **args):
         self.__host = 'localhost'
         self.__port = 8888
         self.__name = paths.GetUsername()
-        
+
+        self.__lock = threading.RLock()
+                
         if 'transport' in args:
             self.__transport = args['transport']
             
@@ -118,6 +125,8 @@ class ProtocolBase(object):
         self.__outgoing_messages = []
         
         self.__callback_messages = []
+        
+        self.__event_queue = []
         
         if self.__iscore:
             self.__connection_list = connection.ConnectionList()
@@ -134,6 +143,13 @@ class ProtocolBase(object):
         theMsg.replied = msgId
         
         self.AddOutgoingMessage(theMsg, connection)
+        
+    def Ping(self, connection):
+        theMsg = self.Pedia().GetMessageObject('ping')
+        
+        connection.set_lastping(time.time() )
+        
+        self.AddOutgoingMessage(theMsg, connection)
     
     def ConnectionList(self):
         return self.__connection_list
@@ -146,7 +162,7 @@ class ProtocolBase(object):
         else:
             raise exceptions.dngExceptionNotImplemented('Connection list has more than one item on it.')
     
-    ## Maintain connections.
+    ## Maintain connections.  This is called from within the socket polling thread.
     def MaintainConnections(self):
         # If there are no connections, nothing should happen here.
         for con in self.__connection_list:
@@ -176,8 +192,8 @@ class ProtocolBase(object):
         #self.__pinglist = cleaned_list
         
         # Now, send pings and update connection status.
-        #if (timestep - con.lastping() ) > 0.98:
-        #    self.Ping(timestep)
+        if (timestep - con.lastping() ) > 0.98:
+            self.Ping(timestep)
 
         timeinterval = timestep - con.lastrecv()
         
@@ -308,6 +324,24 @@ class ProtocolBase(object):
     def RegisterEventCallback(self, cb):
         self.__event_callback = cb
     
+    ## Call this to emit events.  It doesn't actually do the emitting, it just queues up
+    #  the event.  This method should be thread-safe, so it can be called by either thread
+    #  as needed.  The actual event callback is called from the Update method, in the main
+    #  thread.
+    def EmitEvent(self, event):
+        self.AcquireLock()
+        self.__event_queue.append(event)
+        self.ReleaseLock()
+    
+    ## Called fromt the main loop to keep events pumping.
+    def Update(self, timestep):
+        while len(self.__event_queue) > 0:
+            self.AcquireLock()
+            event = self.__event_queue.pop(0)
+            self.ReleaseLock()
+            
+            self.__event_callback(event)
+    
     ## Before you can start the Protocol, you must have a Transport object instantiated, and
     #  you must call SetTransport to tell the Protocol about it.  Then you must call this method
     #  to setup all the message callbacks.  Then, finally, you can start the protocol.
@@ -358,4 +392,15 @@ class ProtocolBase(object):
     def __setupCallbacks(self):
         for cb in self.__callback_messages:
             self.__transport.RegisterCallback(cb[0], cb[1], cb[2])
+
+    ## Used to acquire a lock when working with data structures shared with the main thread
+    def AcquireLock(self):
+        self.__lock.acquire()
+    
+    ## Used to release the lock when done working with data structures shared with the main thread
+    def ReleaseLock(self):
+        self.__lock.release()
+
+            
+    
 

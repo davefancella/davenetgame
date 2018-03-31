@@ -164,6 +164,12 @@ class Connection(object):
     
     def ping(self):
         return self.__conping
+    
+    def lastping(self):
+        return self.__lastping
+    
+    def set_lastping(self, timestamp):
+        self.__lastping = timestamp
     #@}
     
     def CalculatePing(self):
