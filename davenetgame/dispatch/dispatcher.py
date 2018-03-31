@@ -124,12 +124,7 @@ class EventDispatcherServer(DispatcherBase):
 
     ## Console command: quit
     def consoleQuit(self, *args):
-        pass
-        #if theClient is not None:
-        #    theClient.Logout()
-        #    theClient.Stop(True)
-        #    theClient = None
-        keepGoing = False
+        self.Stop()
 
     ## Call to register console commands with the server.  The library implements a number of standard
     #  commands, but games may need their own commands.  In that case, you will need your own callbacks.
