@@ -18,6 +18,8 @@
 
 '''
 
+import threading, time
+
 from davenetgame.dispatch.base import DispatcherBase
 
 ## @file dispatcher
@@ -39,18 +41,47 @@ class EventDispatcherServer(DispatcherBase):
     __consolecommands = None
 
     def __init__(self, **args):
+        super().__init__(**args)
+        
         self.__console = ConsoleInput()
         self.__consolecommands = []
         
         # Register the standard commands available to every game server.
         self.RegisterCommand('show', self.consoleShow, "show (connections)", "Show whatever you want to see.")
-        self.RegisterCommand('help', self.consoleHelp, "help [command]", "print(this helpful text.  Alternately, type in a command to see its helpful text.")
+        self.RegisterCommand('help', self.consoleHelp, "help [command]", "print this helpful text.  Alternately, type in a command to see its helpful text.")
         self.RegisterCommand('quit', self.consoleQuit, "quit", "Quit the server.")
 
     def Start(self):
         self.__console.Start()
         super().Start()
 
+    def Update(self, timestep):
+        try:
+            while self.__console.HasPending():
+                msg = self.__console.pop()
+                args = msg.split(" ")
+                
+                command = args.pop(0)
+                
+                command = command.lower()
+                
+                # Ignore simple presses of enter
+                if command == '':
+                    continue
+
+                foundcommand = False
+                for a in self.__consolecommands:
+                    if a.command() == command:
+                        a.callback(*args)
+                        foundcommand = True
+                
+                if not foundcommand:
+                    print("Command not recognized: " + command)
+        except:
+            pass
+        
+        super().Update(timestep)
+        
     ## @name Console API
     #
     #  These methods give access to the built-in server console and the various commands that
@@ -189,7 +220,7 @@ class ConsoleInput(threading.Thread):
             self.__pcommands.append(msg.strip() )
             self.__lock.release()
             
-            sleep(0.01)
+            time.sleep(0.01)
 
     ## Pops the first item off the commands list and returns it.
     def pop(self):

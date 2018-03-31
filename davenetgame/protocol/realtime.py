@@ -112,13 +112,6 @@ class RealtimeServer(ProtocolBase):
     def Stop(self):
         pass
         
-    ## Must be called periodically to keep the network layer going.  Pass it time.time() 
-    #  to give it
-    #  a timestep.
-    def Update(self, timestep):
-        # Update the server.  This is where the callbacks will get called.
-        self.__server.Update(timestep)
-                
     ## @name Callback Methods
     #
     #  These are the callback methods for particular messages.
