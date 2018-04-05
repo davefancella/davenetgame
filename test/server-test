@@ -31,6 +31,7 @@ from davenetgame.dispatch import dispatcher
 from davenetgame.transport import udp
 from davenetgame.protocol import realtime
 
+from davenetgame import sync
 from davenetgame.gameobjects import player
 
 # For the test server, this is a brief and mostly useless game engine whose purpose in life
@@ -52,7 +53,8 @@ if __name__=='__main__':
     HOST = ''   # Symbolic name meaning all available interfaces
     PORT = 8888 # Arbitrary non-privileged port
 
-    # First, set up the network library.
+    # First, Tell the network library what types of gameobjects we'll be using.
+    sync.RegisterGameObjectType(player.nPlayer, { 'player' : True } )
     
     theServer = dispatcher.EventDispatcherServer()
     theProtocol = realtime.RealtimeServer(

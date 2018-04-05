@@ -200,7 +200,6 @@ class Messages(object):
         return retType
         
     ## Gets a type ID for the message being sent
-    #  TODO: Determine if this is even being used, and if not, get rid of it.
     def GetTypeID(self, msg):
         for key, value in self.__messageList.items():
             if type(msg) == value:

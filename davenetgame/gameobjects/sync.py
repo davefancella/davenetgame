@@ -18,14 +18,21 @@
 
 '''
 
+import struct
+
 from davenetgame import exceptions
 
-## This class stores attributes that will be synced over the network.
+## This class stores attributes that will be synced over the network.  It is a generic class
+#  that supports the standard built-in Python types.  As long as you only need those, then this
+#  class is all you need.
 class nSyncAttribute(object):
     ## The name of the attribute.  This probably isn't useful for this class to know, but hey,
     #  someday an instance of this class may need to go where everybody knows your name, and that
     #  won't be true of the instance doesn't know its own name.
     _name = None
+    
+    ## The id for this attribute.  It'll be used to encode the attribute to send over the wire.
+    _id = None
     
     ## The actual value of the attribute.
     _value = None
@@ -46,14 +53,41 @@ class nSyncAttribute(object):
         self._type = attrDesc['type']
         self._value = attrDesc['value']
         self._isdirty = True
+        self._id = attrDesc['id']
+        
+    ## Returns the id for this attribute
+    def id(self):
+        return self._id
+    
+    def GetFormatString(self):
+        # Integers are encoded as "unsigned int"/"long long" to allow for the largest signed ints
+        # possible.  The unsigned int is the attribute number and doesn't need the same space.
+        if self._type == int:
+            return "Iq"
+        # Floating point numbers are returned as doubles, again to allow for the biggest range
+        # of values that a game may need.
+        if self._type == float:
+            return "Id"
+        
+        return None
+        
+    def Encode(self):
+        fmt = self.GetFormatString()
+        
+        if fmt is not None:
+            return struct.pack("!" + fmt, self._id, self._value)
     
     ## Checks to see if this attribute has been changed since the last time it was synced.
     def IsDirty(self):
         return self._isdirty
     
+    ## Change the dirty bit.  By default, it sets the dirty bit to False, making it clean.
+    def SetDirty(self, dirty = False):
+        self._isdirty = dirty
+    
     ## This is the method that should be called when you want to know the type of the attribute
-    #  that this class represents.  It would break all sorts of things if we override python's builtins
-    #  to hide the fact that the actual type of this object is nSyncAttribute.
+    #  that this class represents.  It would break all sorts of things if we override python's
+    #  builtins to hide the fact that the actual type of this object is nSyncAttribute.
     def Type(self):
         return self._type
     
@@ -113,6 +147,9 @@ class nSyncObject(object):
     ## The list of attributes that are to be synced
     _attributes = None
     
+    ## The current ID for the next new attribute
+    __attrId = None
+    
     ## If any attributes have been changed, then the object is marked dirty.
     _isdirty = None
     
@@ -134,9 +171,34 @@ class nSyncObject(object):
         theList = GetSyncList()
 
         self._id = theList.GetNextId()
+        self.__attrId = 0
         
         AddObjectType(self)
+    
+    ## Serialize this object to a string.  This method is named to be consistent with protobuffers,
+    #  but does not use protobuffers to do anything.  Instead, it returns a tuple, where the first
+    #  item is the string that represents this object, and the second item is the format string
+    #  needed to unpack the object.  Both must be sent over the wire to the receiving end,
+    #  after being embedded into a message that is handled by protobuffers.
+    #
+    #  This method only encodes attributes marked as dirty, but by default does not mark them
+    #  as not dirty.  Pass True to indicate that you want the attributes marked clean, but keep
+    #  in mind that when you do that, subsequent calls will not obtain the attributes again until
+    #  their values actually change again.
+    def SerializeToString(self, clean=False):
+        formatString = "!"
+        encAttrs = ""
         
+        for key, value in self._attributes:
+            if value.IsDirty():
+                formatString += value.GetFormatString()
+                encAttrs += value.Encode()
+                
+                if clean:
+                    value.SetDirty(False)
+        
+        return (encAttrs, formatString)
+    
     ## Subclasses must call this after declaring all attributes and stuff in order to finish setting
     #  up the object.  Without this call, the object will not sync.
     def Finalize(self):
@@ -164,8 +226,10 @@ class nSyncObject(object):
             self._attributes[desc['name'] ] = nSyncAttribute(
                                                 name = desc['name'],
                                                 type = desc['type'],
-                                                value = desc['initial']
+                                                value = desc['initial'],
+                                                id = self.__attrId
                                                 )
+            self.__attrId = self.__attrId + 1
         else:
             raise exceptions.dngSyncAttributeTypeError
         
@@ -193,17 +257,39 @@ class nSyncObject(object):
 
 ## nSyncList holds the list of game objects that are to be synced over the network.  Periodically,
 #  when an nSyncObject is changed, the network layer will automatically generate and send sync packets.
-
 class nSyncList(object):
-    ## holds the list of objects
+    ## holds the list of objects that have been created.
     __syncobjects = None
+    
+    ## Holds the list of objects that have been created, but haven't had their first sync.
+    __newobjects = None
+    
+    ## Holds the list of objects that have been deleted from the game and are waiting to
+    #  be cleaned up from memory.
+    __deleted_objects = None
     
     ## Current ID, unassigned.  Id=0 is currently reserved for no reason whatsoever.
     __currentid = None
 
     def __init__(self):
         self.__syncobjects = []
+        self.__newobjects = []
+        self.__deleted_objects = []
+        
         self.__currentid = 1
+
+    ## Gets the list of objects that have been created.  They will be moved from the
+    #  __newobjects list to the __syncobjects list when you call this.
+    def GetNewObjects(self):
+        aList = []
+        
+        for a in self.__newobjects:
+            aList.append(a)
+        
+        while len(self.__newobjects) > 0:
+            self.__syncobject.append(self.__newobjects.pop(0) )
+            
+        return aList
 
     def GetNextId(self):
         _id = self.__currentid
@@ -213,7 +299,7 @@ class nSyncList(object):
         return _id
 
     def AddSyncObject(self, obj):
-        self.__syncobjects.insert(obj)
+        self.__newobjects.append(obj)
 
     def DeleteSyncObject(self, obj):
         pass
@@ -221,14 +307,20 @@ class nSyncList(object):
 ## Call this function when you declare the class.  The library doesn't need to be
 #  initialized or anything for this function to work.  But before you can connect
 #  to anything, the game object list must know about every single possible class that
-#  will be synced.  The actual numbers will be arbitrarily assigned everytime the app
-#  is loaded, so the server has to sync with every client upon connection.
+#  will be synced.
+#
+#  @todo update this function's documentation.
 #
 #  @param objType A type object representing the class.
-def RegisterGameObjectType(objType):
+#  @param options a dictionary containing options for the type.  Currently the only implemented
+#                 option is "player", indicating that the object type is the player object.  Only
+#                 one player object can exist.
+#  @param typeId You can pass in a type ID and have it declared manually, allowing for backwards
+#                compatibility, if need be.  Currently unimplemented.
+def RegisterGameObjectType(objType, options={}, typeId=None):
     objList = GetGameObjectList()
     
-    objList.AddObjectType(objType)
+    objList.AddObjectType(objType, options, typeId)
     
 
 ## Tracks and assigns numbers for each nSyncObject subclass.  It does absolutely
@@ -237,26 +329,51 @@ class nGameObjects(object):
     ## Current high number for new type IDs
     __currentid = None
     
-    ## The dict of object types, keyed by name
+    ## The dict of object types, keyed by id
     __types = None
+    ## The dict of object ids, keyed by name
+    __typeIds = None
+    ## The dict of object options, keyed by id
+    __options = None
     
     def __init__(self):
         self.__currentid = 1
         self.__types = {}
+        self.__typeIds = {}
+        self.__options = {}
         
     ## Adds a new type object to the list of available types and assigns an id to it.
     #
     #  @param newType the new type object to add.
+    #  @param options a dictionary of options for the game object type.
+    #  @param typeId a manual type ID for the game object type, used for backward compatibility.
+    #                Currently unimplemented.
     #  @returns the new type id.  If the object is already in the list, returns the id
     #                   previously assigned.
-    def AddObjectType(self, newType):
+    def AddObjectType(self, newType, options={}, typeId=None):
         newTypeName = newType.__name__
         
-        if newTypeName not in self.__types:
-            self.__types[newTypeName] = self.__currentid
+        if newTypeName not in self.__typesId:
+            self.__typeIds[newTypeName] = self.__currentid
+            self.__types[self.__currentid] = newType    
             self.__currentid = self.__currentid + 1
+            self.__options[self.__currentid] = options
             
-        return self.__types[newTypeName]
+        return self.__types[self.__typeIds[newTypeName] ]
+    
+    ## Returns the object options, after given a typeId
+    def GetObjectOptions(self, typeId):
+        if typeId in self.__options:
+            return self.__options[typeId]
+        
+        return None
+    
+    ## Returns a type object for the given type Id.  It does not return an instantiated object,
+    #  just the type.
+    #
+    #  @param typeId The ID for the type you want to create.
+    def NewObject(self, typeId):
+        return self.__type[typeId]
 
 __gameobjlist = None
 

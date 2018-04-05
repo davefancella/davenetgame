@@ -24,6 +24,7 @@ from davenetgame import paths
 from davenetgame import pedia
 from davenetgame import exceptions
 from davenetgame.protocol import connection
+from davenetgame.gameobjects import sync
 
 ## These are constants associated with connections.  They generally give the status of the connection.
 C_OK = 0
@@ -103,6 +104,17 @@ class ProtocolBase(object):
     #  the entire list, or the first connection in the list.
     __connection_list = None
     
+    ## This is the list of received messages that need to be acked.  An ack message will
+    #  be generated and sent during connection maintainence.
+    __rec_ack_list = None
+    
+    ## This is the list of messages generated on this side that have been sent and are waiting
+    #  to be acked from the other side.  It's a dictionary keyed by connection, of the form 
+    #  given by str(connection)
+    __sent_ack_list = None
+    
+    ## This is a lock object.  Call it to ensure thread safety when needed.  It's a dictionary
+    #  keyed by connection, of the form given by str(connection)
     __lock = None
     
     def __init__(self, **args):
@@ -133,16 +145,16 @@ class ProtocolBase(object):
 
             self.RegisterMessageCallback('ping', self.PingMessage)
             self.RegisterMessageCallback('ack', self.AckMessage)
+            
+            self.__rec_ack_list = {}
+            self.__sent_ack_list = {}
     
     def Pedia(self):
         return self.__pedia
     
     ## Acks a message
     def Ack(self, msgId, connection):
-        theMsg = self.Pedia().GetMessageObject('ack')
-        theMsg.replied = msgId
-        
-        self.AddOutgoingMessage(theMsg, connection)
+        self.__rec_ack_list[str(connection)].insert([msgId, connection])
         
     def Ping(self, connection):
         theMsg = self.Pedia().GetMessageObject('ping')
@@ -154,13 +166,31 @@ class ProtocolBase(object):
     def ConnectionList(self):
         return self.__connection_list
     
-    def Connection(self):
-        if len(self.__connection_list) == 1:
-            return self.__connection_list[0]
-        elif len(self.__connection_list) == 0:
-            return None
+    ## Call to get a specific connection from a tuple of (host, port).  There are lots of
+    #  places internally where this is called passing a tuple even in a client setting.  You
+    #  should expect to only call Connection without arguments in user code, not in library
+    #  code, but that's really more of a guideline.  In peer to peer protocols, the standard
+    #  client->server model doesn't apply, of course.
+    #
+    #  @param connectInfo a tuple of (host, port).  If None is passed, then there *must* be a
+    #                     maximum of one connection in the list.  This is so that client protocols
+    #                     can simple call self.Connection() to get their connection to the
+    #                     server.
+    def Connection(self, connectInfo=None):
+        # First, if we're a client, return the one and only one connection we should have, or
+        # None if we're not connected.
+        if connectInfo == None:
+            if len(self.__connection_list) == 1:
+                return self.__connection_list[0]
+            elif len(self.__connection_list) == 0:
+                return None
+            else:
+                raise exceptions.dngExceptionNotImplemented('Connection list has more than one item on it.')
         else:
-            raise exceptions.dngExceptionNotImplemented('Connection list has more than one item on it.')
+            for con in self.__connection_list:
+                if connectInfo == con:
+                    return connectInfo
+            return None
     
     ## Maintain connections.  This is called from within the socket polling thread.
     def MaintainConnections(self):
@@ -172,20 +202,21 @@ class ProtocolBase(object):
     def MaintainConnection(self, con):
         timestep = time.time()
         
-        ''' Commented out for now, may need it again later
         # Now, ack all the messages that were received and aren't acks.  Don't ack an ack!
         # ackList is built above from messages that aren't acks and get mostly ignored above.
-        if len(ackList) > 0:
-            Nmsg = self.__pedia.GetMessageType(mp.M_ACK)()
-            Nmsg.mtype = mp.M_ACK
-            for nid in ackList:
-                Nmsg.replied.append(nid)
+        for connection, ackList in self.__rec_ack_list:
+            theCon = None
+            while len(ackList) > 0:
+                theMsg = self.Pedia().GetMessageObject('ack')
+                
+                for nid in ackList:
+                    theMsg.replied.append(nid[0])
+                    theCon = nid[1]
+                    
+                self.AddOutgoingMessage(theMsg, theCon)
             
-            self.AddOutgoing(Nmsg)
-        
-        # Make sure the acklist is empty after this point
-        ackList = None
-        ackList = [] '''
+            # Make sure the acklist is empty after this point
+            self.__rec_ack_list[connection] = []
         
         # Clean out the ping list of expired pings.
         #cleaned_list = [ x for x in self.__pinglist if (timestep - x[1]) < 2.0 ]
@@ -216,11 +247,34 @@ class ProtocolBase(object):
         
         con.CalculatePing()
         
+        # Now sync game objects.
+        self.SyncObjects()
+        
+    ## Sync game objects.  Base implementation does nothing, because this is highly dependent on
+    #  the protocol itself.  In a typical client->server protocol, the client will implement this
+    #  as a receiving sync objects while the server will implement this to send sync objects.
+    def SyncObjects(self):
+        pass
+
+    ## Receives a message, but doesn't do much with it.  The Transport will still call the 
+    #  actual callbacks.  This method is for bookkeeping, mostly building the acklist for 
+    #  received messages to make sure they all get acked properly.
+    def ReceiveMessage(self, msg, connectInfo):
+        # Only ack if there's a connection to which to ack.
+        con = self.Connection(connectInfo)
+        if con != None:
+            self.Ack(msg.id, con)
+        
     ## Adds an outgoing message to the queue.
     #
     #  @param msg the message object to send
     #  @param connection the connection to which it will be sent.
     def AddOutgoingMessage(self, msg, connection):
+        # Add to the ack list of acks we're expecting to receive.  Don't add it to the 
+        # list if the outgoing message is itself an ack.  Don't ack an ack!
+        if msg.mtype != self.Pedia().GetTypeId('ack'):
+            self.__sent_ack_list[str(connection)].append(msg.id, connection)
+        
         self.__outgoing_messages.append({ 'message' : msg,
                                           'connection' : connection
                                         }

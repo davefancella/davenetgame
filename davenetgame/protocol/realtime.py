@@ -43,9 +43,7 @@ class RealtimeClient(ProtocolBase):
     
     ## This is the callback for login messages.  On the client, when a login message is received,
     #  it is telling the client that another client has logged into the server.
-    def LoginMessage(self, **args):
-        self.Ack(args['message'].id, self.Connection() )
-        
+    def LoginMessage(self, **args):        
         self.Connection().SetId(args['message'].con_id)
         self.Connection().set_lastrecv(args['timestep'] )
         
@@ -108,9 +106,18 @@ class RealtimeServer(ProtocolBase):
     def Start(self):
         print("Starting " + self.Name() + ".")
         
-    ## Call to stop the server.  Stops the console as well.
+    ## Call to stop the server.
     def Stop(self):
         pass
+        
+    def SyncObjects(self):
+        # Now it's time to sync any game objects that need to be synced.
+        syncList = sync.GetSyncList()
+        
+        # Start with sending out game object creation messages.
+        for a in syncList.GetNewObjects():
+            pass
+        
         
     ## @name Callback Methods
     #
@@ -119,7 +126,7 @@ class RealtimeServer(ProtocolBase):
     
     ## Callback for login messages.  This means that a client is trying to login.
     def LoginMessage(self, **args):
-        print("Received login from " + str(args['connection'][0]) + ":" + str(args['connection'][1]) )
+        print("Received login request from " + str(args['connection'][0]) + ":" + str(args['connection'][1]) )
         
         newConnection = self.ConnectionList().Create(args['connection'], args['message'].player)
         
@@ -142,7 +149,9 @@ class RealtimeServer(ProtocolBase):
     ## Callback for logout messages.  This means that a client is signaling it is disconnecting
     #  from the server.
     def LogoutMessage(self, **args):
-        pass
+        self.EmitEvent( {'name' : "Logout",
+                         'type' : 'logout',
+                         'data' : args['data'] } )
     
     #@}
     

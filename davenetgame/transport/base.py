@@ -237,6 +237,8 @@ class TransportBase(threading.Thread):
 
         buf.ParseFromString(msg)
         
+        self.__owner.ReceiveMessage(buf, connectInfo)
+        
         theCbs = self.GetCallbacks(typeName)
 
         # We pass a timestep to every handler so they can update connections accordingly
