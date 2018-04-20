@@ -237,17 +237,17 @@ class TransportBase(threading.Thread):
 
         buf.ParseFromString(msg)
         
-        self.__owner.ReceiveMessage(buf, connectInfo)
-        
-        theCbs = self.GetCallbacks(typeName)
-
         # We pass a timestep to every handler so they can update connections accordingly
         timestep = time.time()
+
+        self.__owner.ReceiveMessage(buf, connectInfo, timestep)
+        
+        theCbs = self.GetCallbacks(typeName)
 
         for cb in theCbs:
             cb.setargs( { 'message' : buf,
                           'connection' : connectInfo,
-                          'timestep' : timestep } )
+                          'timestamp' : timestep } )
             cb.Call()
 
     ## Call to get outgoing messages from the owner object.  Each message will be already

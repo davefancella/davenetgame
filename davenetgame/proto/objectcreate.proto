@@ -28,7 +28,7 @@ message ObjectCreate {
     // that it owns the object, while a value of 0 tells the receiving client that the object
     // is a player-level object.  The mtype also says that, but since a developer can create
     // their own player type, it's not a reliable way to tell if this one is a player object.
-    optional fixed32 owner = 5;
+    optional sint32 owner = 5;
     
     // A struct.pack encoded string of initial values for the object.  If included, you must
     // also ensure that value_string is included as well, so that this field can be unpacked.

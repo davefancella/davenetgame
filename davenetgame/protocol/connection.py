@@ -25,6 +25,9 @@ import threading
 from davenetgame import pedia
 from davenetgame import callback
 
+from davenetgame import log
+from davenetgame import paths
+
 ## These are constants associated with connections.  They generally give the status of the connection.
 C_OK = 0
 ## The connection hasn't responded to pings for 10 seconds
@@ -99,6 +102,8 @@ class Connection(object):
         
         if 'player' in args:
             self.__player = args['player']
+        else:
+            self.__player = paths.GetUsername()
  
         self.__id = GetConId()
         
@@ -159,8 +164,21 @@ class Connection(object):
     def status(self):
         return self.__status
     
+    ## Set the status of the connection.  Returns None if the status is unchanged from the last
+    #  time this method was called.  If the status has changed, then this will return a dict
+    #  containing the old and new statuses.
     def set_status(self, status):
+        statusChange = False
+        retStatus = None
+        
+        if self.__status != status:
+            statusChange = True
+            retStatus = { 'old' : self.__status,
+                          'new' : status }
+            
         self.__status = status
+        
+        return retStatus
     
     def ping(self):
         return self.__conping
@@ -170,12 +188,29 @@ class Connection(object):
     
     def set_lastping(self, timestamp):
         self.__lastping = timestamp
+    
+    ## Add message intervals.  It should be a list of dicts, with the dict of the form:
+    #
+    #      'interval' : a time interval in seconds between the sent message and the received ack.
+    #      'timestamp' : the timestamp when the ack was received.  This is used to cull outdated
+    #                    message intervals.
+    def add_message_intervals(self, intervals):
+        for interval in intervals:
+            self.__msgintervals.append(interval)
     #@}
     
     def CalculatePing(self):
+        timestamp = time.time()
+        
+        # Prune the list of expired intervals
+        self.__msgintervals[:] = [item for item in self.__msgintervals if item['timestamp'] > (timestamp-5.0) ]
+
+        # Now build the list of values to compute
+        msgintervals = [item['interval'] for item in self.__msgintervals]
+        
         # Avoid a division by zero error that should never happen
-        if len(self.__msgintervals) > 0:
-            self.__conping = sum(self.__msgintervals)/len(self.__msgintervals)
+        if len(msgintervals) > 0:
+            self.__conping = sum(msgintervals)/len(msgintervals)
     
     
     ## Return a string for the connection
@@ -257,7 +292,9 @@ class ConnectionList(object):
         return theList
         
     def append(self, item):
-        self.__connections.append(item)
+        if item not in self.__connections:
+            self.__connections.append(item)
+        #log.stack()
         
     def pop(self, item = None):
         if item is None:
@@ -266,8 +303,7 @@ class ConnectionList(object):
         return self.__connections.pop(item)
 
     def __iter__(self):
-        for a in self.__connections:
-            yield a
+        return iter(self.__connections)
 
     ## Returns the connection for the host:port combination
     def GetConnection(self, con):

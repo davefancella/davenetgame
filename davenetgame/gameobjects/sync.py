@@ -173,6 +173,10 @@ class nSyncObject(object):
         self._id = theList.GetNextId()
         self.__attrId = 0
         
+        self.AddAttribute(name="owner",
+                          type=int,
+                          initial=0 )
+
         AddObjectType(self)
     
     ## Serialize this object to a string.  This method is named to be consistent with protobuffers,
@@ -353,7 +357,7 @@ class nGameObjects(object):
     def AddObjectType(self, newType, options={}, typeId=None):
         newTypeName = newType.__name__
         
-        if newTypeName not in self.__typesId:
+        if newTypeName not in self.__typeIds:
             self.__typeIds[newTypeName] = self.__currentid
             self.__types[self.__currentid] = newType    
             self.__currentid = self.__currentid + 1

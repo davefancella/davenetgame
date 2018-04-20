@@ -21,6 +21,7 @@
 import threading, time
 
 from davenetgame.dispatch.base import DispatcherBase
+from davenetgame.protocol import connection
 
 ## @file dispatcher
 #
@@ -94,14 +95,11 @@ class EventDispatcherServer(DispatcherBase):
             print("Usage: show (connections)")
         else:
             if args[0] == "connections":
-                if len(self.__server.GetConnectionList() ) == 0:
+                if len(self.GetConnections() ) == 0:
                     print("There are no connections at this time.")
                 else:
-                    for a in self.__server.GetConnectionList():
-                        print("%3s: %40s  %10s %4s" % (a.id(), 
-                                                       str(a), 
-                                                       connection.statuslist[a.Status()][1],
-                                                       int(a.GetConnectionPing() * 1000) ))
+                    for a in self.GetConnections():
+                        print("{0:3}: {1:40} {2:10} {3:4}".format(a.id(), str(a), connection.statuslist[a.Status()][1], int(a.GetConnectionPing() * 1000) ) )
             else:
                 print("Unknown thing to show: " + args[0])
     

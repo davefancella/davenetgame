@@ -22,7 +22,7 @@
 from time import sleep
 import time, sys
 
-import readline
+#import readline
 
 import sys
 sys.path.insert(0, '')
@@ -31,7 +31,7 @@ from davenetgame.dispatch import dispatcher
 from davenetgame.transport import udp
 from davenetgame.protocol import realtime
 
-from davenetgame import sync
+from davenetgame.gameobjects import sync
 from davenetgame.gameobjects import player
 
 # For the test server, this is a brief and mostly useless game engine whose purpose in life
@@ -41,13 +41,24 @@ class Game(object):
     # Connected players
     __players = None
     
+    #__connections = None
+    
     def __init__(self, **args):
         self.__players = []
+        #self.__connections = []
         
     def LoginEvent(self, **event):
-        aPlayer = player.nPlayer(connection=event['data'] )
+        pass
+        #aPlayer = player.nPlayer(connection=event['data'] )
         
-        print(aPlayer.playername + " has logged in.")
+        #print(aPlayer.playername + " has logged in.")
+        #print("aPlayer has logged in.")
+        
+        #self.__players.append(aPlayer)
+        #self.__connections.append(event['data'])
+        
+    def StatusChange(self, **event):
+        print(event)
     
 if __name__=='__main__':
     HOST = ''   # Symbolic name meaning all available interfaces
@@ -72,6 +83,7 @@ if __name__=='__main__':
     # Second, setup the game object
     theGame = Game()
     theServer.RegisterCallback('login', theGame.LoginEvent)
+    theServer.RegisterCallback('con_status_change', theGame.StatusChange)
 
     # Third, start the server
     theServer.Start()
@@ -80,6 +92,7 @@ if __name__=='__main__':
     try:
         while(keepGoing) :
             theServer.Update(time.time() )
+            time.sleep(0.01)
             
     except KeyboardInterrupt:
         print("Quitting due to keyboard interrupt")

@@ -20,8 +20,26 @@
 
 import time, sys, os
 
+import inspect
+
+# Set the log level.  0 is no logging, while negative numbers are debug messages not useful
+# for logging.
+loglevel = -5
+
 stdout = None
 stderr = None
+
+def stack():
+    global loglevel
+    
+    if loglevel == -5:
+        print("Current call stack:")
+        for a in reversed(inspect.stack() ):
+            if a.filename.startswith("/usr/lib"):
+                pass
+            else:
+                print("   " + a.function + " from file " + a.filename + " at line: " + str(a.lineno) )
+
 
 def logger(errfile, logfile):
     global stdout, stderr

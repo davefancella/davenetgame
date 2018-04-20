@@ -23,6 +23,7 @@ import time, threading
 from davenetgame import paths
 from davenetgame import pedia
 from davenetgame import exceptions
+from davenetgame import log
 from davenetgame.protocol import connection
 from davenetgame.gameobjects import sync
 
@@ -132,6 +133,11 @@ class ProtocolBase(object):
         if 'core' in args:
             self.__iscore = args['core']
             
+        if 'player' in args:
+            self.__player = args['player']
+        else:
+            self.__player = paths.GetUsername()
+            
         self.__pedia = pedia.getPedia()
         
         self.__outgoing_messages = []
@@ -154,14 +160,24 @@ class ProtocolBase(object):
     
     ## Acks a message
     def Ack(self, msgId, connection):
-        self.__rec_ack_list[str(connection)].insert([msgId, connection])
+        theCon = connection
+        
+        self.__rec_ack_list[str(theCon)].append([msgId, theCon])
         
     def Ping(self, connection):
         theMsg = self.Pedia().GetMessageObject('ping')
         
         connection.set_lastping(time.time() )
-        
+                
         self.AddOutgoingMessage(theMsg, connection)
+    
+    ## Call to add a new connection.
+    def AddConnection(self, connection):
+        self.__connection_list.append(connection)
+        self.__sent_ack_list[str(connection)] = []
+        self.__rec_ack_list[str(connection)] = []
+        
+        print(self.__sent_ack_list)
     
     def ConnectionList(self):
         return self.__connection_list
@@ -189,7 +205,7 @@ class ProtocolBase(object):
         else:
             for con in self.__connection_list:
                 if connectInfo == con:
-                    return connectInfo
+                    return con
             return None
     
     ## Maintain connections.  This is called from within the socket polling thread.
@@ -204,20 +220,25 @@ class ProtocolBase(object):
         
         # Now, ack all the messages that were received and aren't acks.  Don't ack an ack!
         # ackList is built above from messages that aren't acks and get mostly ignored above.
-        for connection, ackList in self.__rec_ack_list:
-            theCon = None
-            while len(ackList) > 0:
-                theMsg = self.Pedia().GetMessageObject('ack')
+        if len(self.__rec_ack_list[str(con)]) > 0:
+            theMsg = self.Pedia().GetMessageObject('ack')
                 
-                for nid in ackList:
-                    theMsg.replied.append(nid[0])
-                    theCon = nid[1]
-                    
-                self.AddOutgoingMessage(theMsg, theCon)
+            theCon = None
+            
+            sendAck = False
+            
+            for ackList in self.__rec_ack_list[str(con)]:
+                sendAck = True
+                theMsg.replied.append(ackList[0])
+                #print(str(theMsg) )
+                theCon = ackList[1]
             
             # Make sure the acklist is empty after this point
-            self.__rec_ack_list[connection] = []
+            self.__rec_ack_list[str(con)] = []
         
+            if sendAck:
+                self.AddOutgoingMessage(theMsg, theCon)
+            
         # Clean out the ping list of expired pings.
         #cleaned_list = [ x for x in self.__pinglist if (timestep - x[1]) < 2.0 ]
         #self.__pinglist = cleaned_list
@@ -232,14 +253,28 @@ class ProtocolBase(object):
         # other side.
         global C_OK, C_SILENT, C_TIMINGOUT, C_TIMEOUT
         
+        newStatus = None
+        
         if timeinterval < 10.0:
-            con.set_status(C_OK)
+            newStatus = con.set_status(C_OK)
         elif (timeinterval >= 10.0) and (timeinterval < 20.0):
-            con.set_status(C_SILENT)
+            newStatus = con.set_status(C_SILENT)
         elif (timeinterval >= 20.0) and (timeinterval < 30.0):
-            con.set_status(C_TIMINGOUT)
+            newStatus = con.set_status(C_TIMINGOUT)
         elif (timeinterval >= 30.0):
-            con.set_status(C_TIMEOUT)
+            newStatus = con.set_status(C_TIMEOUT)
+            
+        # If the status changed, find the appropriate event and emit it.
+        if newStatus is not None:
+            self.EmitEvent( {
+                    'type' : 'con_status_change',
+                    'new' : newStatus['new'],
+                    'old' : newStatus['old'],
+                    'newS' : connection.statuslist[newStatus['new']][1],
+                    'oldS' : connection.statuslist[newStatus['old']][1],
+                    'connection' : con
+                }
+            )
     
         # Calculate the connection's ping and store it, after first filtering out intervals that won't be used this time.
         #while len(self.__msgintervals) > 10:
@@ -257,24 +292,23 @@ class ProtocolBase(object):
         pass
 
     ## Receives a message, but doesn't do much with it.  The Transport will still call the 
-    #  actual callbacks.  This method is for bookkeeping, mostly building the acklist for 
-    #  received messages to make sure they all get acked properly.
-    def ReceiveMessage(self, msg, connectInfo):
+    #  actual callbacks.  This method is for bookkeeping.
+    def ReceiveMessage(self, msg, connectInfo, timestamp=None):
         # Only ack if there's a connection to which to ack.
         con = self.Connection(connectInfo)
+        
         if con != None:
-            self.Ack(msg.id, con)
+            if timestamp is None:
+                timestamp = time.time()
+                print("Warning: having to retrieve a timestamp in ReceiveMessage")
+            
+            con.set_lastrecv(timestamp)
         
     ## Adds an outgoing message to the queue.
     #
     #  @param msg the message object to send
     #  @param connection the connection to which it will be sent.
     def AddOutgoingMessage(self, msg, connection):
-        # Add to the ack list of acks we're expecting to receive.  Don't add it to the 
-        # list if the outgoing message is itself an ack.  Don't ack an ack!
-        if msg.mtype != self.Pedia().GetTypeId('ack'):
-            self.__sent_ack_list[str(connection)].append(msg.id, connection)
-        
         self.__outgoing_messages.append({ 'message' : msg,
                                           'connection' : connection
                                         }
@@ -297,6 +331,16 @@ class ProtocolBase(object):
         while len(self.__outgoing_messages) > 0:
             msg = self.__outgoing_messages.pop(0)
 
+            # Add to the ack list of acks we're expecting to receive.  Don't add it to the 
+            # list if the outgoing message is itself an ack.  Don't ack an ack!
+            # We do it here because this is the last chance we can before the message gets sent.
+            if msg['message'].mtype != self.Pedia().GetTypeId('ack'):
+                self.__sent_ack_list[str(msg['connection'])].append( 
+                    { 'id' : msg['message'].id, 
+                      'connection' : msg['connection'],
+                      'timestamp' : time.time()
+                      } )
+        
             theMsg = { 'message' : msg['message'].SerializeToString(),
                        'type' : msg['message'].mtype,
                        'connection' : msg['connection'].info() }
@@ -310,9 +354,26 @@ class ProtocolBase(object):
     #  These are the callback methods for particular messages.
     #@{
     
-    ## Callback for ack messages.
+    ## Callback for ack messages.  We receive acks for messages we've sent.
     def AckMessage(self, **args):
-        pass
+        theCon = self.Connection(args['connection'])
+        
+        con = str(theCon)
+        
+        for acked in args['message'].replied:
+            counter = 0
+            foundAck = False
+            for a in self.__sent_ack_list[con]:
+                foundAck = (a['id'] == acked)
+                if foundAck:
+                    theInterval = args['timestamp'] - a['timestamp']
+                    # Add the interval to the connection object.
+                    theCon.add_message_intervals([ {'interval' : theInterval, 'timestamp' : args['timestamp'] } ] )
+                    break
+                counter = counter + 1
+            if foundAck:
+                self.__sent_ack_list[con].pop(counter)
+            
     
     ## Callback for ping messages
     def PingMessage(self, **args):

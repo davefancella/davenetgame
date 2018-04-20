@@ -18,8 +18,12 @@
 
 '''
 
+import socket
+
 from davenetgame.protocol.base import ProtocolBase
 from davenetgame.protocol import connection
+
+from davenetgame import paths
 
 class RealtimeClient(ProtocolBase):
     ## The connection to the server.
@@ -45,7 +49,7 @@ class RealtimeClient(ProtocolBase):
     #  it is telling the client that another client has logged into the server.
     def LoginMessage(self, **args):        
         self.Connection().SetId(args['message'].con_id)
-        self.Connection().set_lastrecv(args['timestep'] )
+        self.Connection().set_lastrecv(args['timestamp'] )
         
         #TODO: emit an event indicating that the login is complete
         print('The server has logged you in.')
@@ -77,8 +81,8 @@ class RealtimeClient(ProtocolBase):
     ## Starts the client, initiating a connection to the server.  Don't do this until you've 
     #  set the host and port number correctly!
     def Start(self):
-        host, port = self.Host(), self.Port()
-        self.ConnectionList().append(connection.Connection(host=host, port=port ) )
+        host, port = socket.gethostbyname(self.Host() ), self.Port()
+        self.AddConnection(connection.Connection(host=host, port=port, player=self.Name() ) )
         
         self.LoginSend()
 
@@ -111,12 +115,16 @@ class RealtimeServer(ProtocolBase):
         pass
         
     def SyncObjects(self):
+        return
         # Now it's time to sync any game objects that need to be synced.
         syncList = sync.GetSyncList()
         
         # Start with sending out game object creation messages.
         for a in syncList.GetNewObjects():
             pass
+        
+        # Now sync any objects that need to be synced
+        pass
         
         
     ## @name Callback Methods
@@ -130,8 +138,9 @@ class RealtimeServer(ProtocolBase):
         
         newConnection = self.ConnectionList().Create(args['connection'], args['message'].player)
         
-        newConnection.set_lastrecv(args['timestep'])
+        newConnection.set_lastrecv(args['timestamp'])
         
+        self.AddConnection(newConnection)
         self.Ack(args['message'].id, newConnection)
         
         theMsg = self.Pedia().GetMessageObject('login')

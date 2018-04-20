@@ -28,6 +28,7 @@ import readline
 from davenetgame.dispatch import dispatcher
 from davenetgame.transport import udp
 from davenetgame.protocol import realtime
+from davenetgame.protocol import connection
  
 host = 'localhost'
 port = 8888
@@ -146,10 +147,11 @@ try:
             if theClient is None:
                 print("You are not connected to a server.")
             else:
-                print(theClient.StatusString() )
-                print("Bytes received: " + str(theClient.BytesReceived() ) )
-                print("Bytes sent: " + str(theClient.BytesSent() ) )
-                print("Bytes transferred: " + str(theClient.Bandwidth() ) )
+                for a in theClient.GetConnections():
+                    print("{0:3}: {1:40} {2:10} {3:4}".format(a.id(), str(a), connection.statuslist[a.Status()][1], int(a.GetConnectionPing() * 1000) ) )
+                #print("Bytes received: " + str(theClient.BytesReceived() ) )
+                #print("Bytes sent: " + str(theClient.BytesSent() ) )
+                #print("Bytes transferred: " + str(theClient.Bandwidth() ) )
         else:
             print("Command not recognized.")
             

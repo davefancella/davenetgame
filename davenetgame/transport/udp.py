@@ -91,7 +91,7 @@ class Udp(TransportBase):
     def SendMessage(self, msg):
         # Encode the message
         payload = struct.pack("!I", msg['type']) + msg['message']
-        
+        #print(msg)
         ## TODO: do the bandwidth calculation
         #self.__bytessent += len(payload)
         

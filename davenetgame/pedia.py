@@ -20,6 +20,9 @@
 
 import importlib, time
 
+# Uncomment this line if you need to debug this file
+#import inspect
+
 from davenetgame import exceptions
 
 ## This class is the master list of all messages.  If you want to create a message, you have to
@@ -76,6 +79,7 @@ class Messages(object):
         self.AddInternalMessageType("login", "Login", {'nologin':None} )
         self.AddInternalMessageType("logout", "Logout")
         self.AddInternalMessageType("chat", "Chat")
+        self.AddInternalMessageType("objectcreate", "ObjectCreate")
 
     ## Adds a message type.  Provide it with a name and the location of the module from which
     #  the *_pb2.py file will be imported.  The order in which messages are added *matters*,
@@ -185,6 +189,13 @@ class Messages(object):
     def GetNetMessageId(self):
         self.__lastNetMessageId = self.__lastNetMessageId + 1
         
+        # Uncomment the next few lines if you need to see the call stack for debugging purposes
+        #print("Current call stack:")
+        #for a in inspect.stack():
+        #    print("   " + a.function + " from file " + a.filename + " at line: " + str(a.lineno) )
+        #    if a.function == "run":
+        #        break
+        
         return self.__lastNetMessageId
     
     ## Gets a message type, whether or not it is given a string or an ID.
@@ -200,7 +211,7 @@ class Messages(object):
         return retType
         
     ## Gets a type ID for the message being sent
-    def GetTypeID(self, msg):
+    def GetTypeId(self, msg):
         for key, value in self.__messageList.items():
             if type(msg) == value:
                 return key

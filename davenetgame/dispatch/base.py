@@ -35,6 +35,9 @@ class DispatcherBase(object):
     ## The list of callback functions for events
     __callbacks = None
     
+    ## Current connections maintained
+    __connections = None
+    
     def __init__(self, **args):
         self.__protocols = []
         
@@ -44,6 +47,17 @@ class DispatcherBase(object):
             self.__protocols = args['protocols']
             
         self.__core_protocol = None
+        
+        self.__connections = []
+        
+        # Register internal event handlers.  These should generally just grab information
+        # from the event and do no actions, since events are supposed to be dispatched to
+        # the game, and protocols handle everything under this object.
+        #self.RegisterCallback('login', self.__LoginEvent)
+        
+    ## Returns the internal list of connections.
+    def GetConnections(self):
+        return self.__core_protocol.ConnectionList()
     
     ## Call this every time your game loop loops to keep events moving.  It is not optional.
     def Update(self, timestep):
@@ -65,7 +79,6 @@ class DispatcherBase(object):
         
     def ProcessEvent(self, event):
         for cb in self.GetCallbacks(event['type']):
-            print(event)
             cb.setargs(event)
             cb.Call()
 
@@ -80,6 +93,9 @@ class DispatcherBase(object):
     def GetCallbacks(self, etype):
         return self.__callbacks.GetCallbacks(etype)
     
+    ## Internal use only.  Grabs connection information from logins.
+    def __LoginEvent(self, **event):
+        self.__connections.append(event['data'] )
 
 
 

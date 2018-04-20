@@ -110,6 +110,7 @@ def GetUsername():
             return "Player 1"
     else:
         return pwd.getpwuid(os.getuid())[0]
+    return pwd.getpwuid(os.getuid())[0]
 
 ## Return the asset path desired.  If targetFile is not none, then it will join the filename to the asset path,
 # returning a complete path to the file you want.  This allows you to open app asset files in a cross-platform
