@@ -1,9 +1,0 @@
-Create a facility in the client object to spawn a server process and connect to the three standard pipes.
-
-Document the API, ensuring that all parameters are documented properly for Doxygen
-
-Start the asteroids game by making it capable of connecting to a server, and start the asteroids server.
-
-The line needed to make the server able to use pygame and run headless:
-    os.environ["SDL_VIDEODRIVER"] = "dummy"
-
