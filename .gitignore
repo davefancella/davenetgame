@@ -1,3 +1,10 @@
+# Bzr stuff that'll be removed at some point
+.bzr/
+.bzrignore
+
+# Generated apidocs by doxygen
+docs/
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
