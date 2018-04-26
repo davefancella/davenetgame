@@ -32,7 +32,7 @@ class nPlayer(sync.nSyncObject):
         super().__init__()
         
         self.__connection = args['connection']
-        
+        print(self.__connection.player() )
         self.AddAttribute(name="playername",
                           type=str,
                           initial=self.__connection.player() )

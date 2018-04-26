@@ -50,7 +50,7 @@ class Game(object):
     def LoginEvent(self, **event):
         aPlayer = player.nPlayer(connection=event['data'] )
         
-        print(aPlayer.playername + " has logged in.")
+        print(str(aPlayer.playername) + " has logged in.")
         #print("aPlayer has logged in.")
         
         self.__players.append(aPlayer)

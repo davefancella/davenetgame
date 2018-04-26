@@ -55,6 +55,10 @@ class nSyncAttribute(object):
         self._isdirty = True
         self._id = attrDesc['id']
         
+    ## Just a generic way to return a string.  Subclasses should reimplement this, of course.
+    def __str__(self):
+        return str(self._value)
+        
     ## Returns the id for this attribute
     def id(self):
         return self._id
@@ -112,10 +116,10 @@ class nSyncAttribute(object):
     def __getattribute__(self, name):
         # The entire purpose of this if statement is to protect the name "_value" from being overridden.
         # It's not perfect, but a programmer would be dumb to bother changing it.
-        if name == "value":
-            return super(nSyncAttribute, self).__getattribute__("_value")
+        if name == "_value":
+            return super().__getattribute__("_value")
         else:
-            return super(nSyncAttribute, self).__getattribute__(name)
+            return super().__getattribute__(name)
         
     ## Overrides the default __setattr__ behavior to make sure we do the necessary housekeeping
     #  when the actual value of the attribute being synced is done.  Also, we type check that value
@@ -123,14 +127,14 @@ class nSyncAttribute(object):
     #  into a network message.  This is also where all other possible options for attributes
     #  get checked and enforced, if need be.
     def __setattr__(self, name, value):
-        if name == "value":
+        if name == "_value":
             if isinstance(value, self._type):
-                super(nSyncAttribute, self).__setattr__("_isdirty", True)
-                super(nSyncAttribute, self).__setattr__("_value", value)
+                super().__setattr__("_isdirty", True)
+                super().__setattr__("_value", value)
             else:
                 raise exceptions.dngSyncAttributeTypeError
         else:
-            super(nSyncAttribute, self).__setattr__(name, value)
+            super().__setattr__(name, value)
     
 
 ## nSyncObject is the class from which game objects that need to be synced must inherit.  After initializing
@@ -177,7 +181,7 @@ class nSyncObject(object):
                           type=int,
                           initial=0 )
 
-        AddObjectType(self)
+        GetGameObjectList().AddObjectType(type(self) )
     
     ## Serialize this object to a string.  This method is named to be consistent with protobuffers,
     #  but does not use protobuffers to do anything.  Instead, it returns a tuple, where the first
@@ -223,7 +227,7 @@ class nSyncObject(object):
     #                           "initial" : The initial value.  This is required, and it must be an instance
     #                                       of the type given by the type parameter.
     def AddAttribute(self, **desc):
-        if self._attributes.has_key(desc['name']):
+        if desc['name'] in self._attributes:
             raise exceptions.dngSyncObjectAttributeError
         
         if isinstance(desc['initial'], desc['type']):
@@ -242,7 +246,7 @@ class nSyncObject(object):
     #  starts that lets objects get synced, transparent to the calling code.
     def __getattribute__(self, name):
         if name in super().__getattribute__("_attributes"):
-            return super().__getattribute__(name).value
+            return super().__getattribute__("_attributes")[name]
         else:
             return super().__getattribute__(name)
         
@@ -251,12 +255,15 @@ class nSyncObject(object):
     #  the real work of tracking changes in the values so they can be synced is done in the
     #  nSyncAttribute object.  If not, it's passed on to let python just do its normal thing.
     def __setattr__(self, name, value):
-        if name in super().__getattribute__("_attributes"):
+        # First make sure we're not trying to directly access the _attributes method
+        if name == "_attributes":
+            super().__setattr__(name, value)
+        elif name in super().__getattribute__("_attributes"):
             # Note that type checking happens in the nSyncAttribute class, not here.
-            super().__getattribute__(name).value = value
+            super().__getattribute__("_attributes")[name].value = value
             self._isdirty = True
         else:
-            super().__getattribute__(name).value = value
+            super().__setattr__(name, value)
         
 
 ## nSyncList holds the list of game objects that are to be synced over the network.  Periodically,
@@ -298,7 +305,7 @@ class nSyncList(object):
     def GetNextId(self):
         _id = self.__currentid
         
-        self.__currentid = self.__current+1
+        self.__currentid = self.__currentid + 1
         
         return _id
 
