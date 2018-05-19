@@ -42,6 +42,12 @@ class nSyncAttributeInt(base.nSyncAttributeBase):
     def GetFormatString(self):
         return "Iq"
             
+    def Encode(self):
+        fmt = self.GetFormatString()
+        
+        if fmt is not None:
+            return struct.pack("!" + fmt, self._id, self._value)
+    
 class nSyncAttributeFloat(base.nSyncAttributeBase):
     ## Initializes the class.  attrDesc should be a dictionary describing the attribute that this
     #  object will represent.  Consult nSyncObject for the description of this dictionary.
@@ -58,4 +64,37 @@ class nSyncAttributeFloat(base.nSyncAttributeBase):
         
     def GetFormatString(self):
         return "Id"
+
+    def Encode(self):
+        fmt = self.GetFormatString()
+        
+        if fmt is not None:
+            return struct.pack("!" + fmt, self._id, self._value)
+    
+class nSyncAttributeString(base.nSyncAttributeBase):
+    ## Initializes the class.  attrDesc should be a dictionary describing the attribute that this
+    #  object will represent.  Consult nSyncObject for the description of this dictionary.
+    #  The attribute will be marked dirty initially, because it is dirty when created new.  This will
+    #  result in the entire nSyncObject being synced with initial values as soon as it is created,
+    #  and this is desired behavior.
+    def __init__(self, **attrDesc):
+        # Force the type to be an float, regardless of what was passed in.
+        attrdesc['type'] = unicode
+        super().__init__(attrDesc)
+        
+    def __str__(self):
+        return str(self._value)
+        
+    def GetFormatString(self):
+        
+        return "Id"
+
+    def Encode(self):
+        fmt = self.GetFormatString()
+        
+        if fmt is not None:
+            return struct.pack("!" + fmt, self._id, self._value)
+    
+
+
             

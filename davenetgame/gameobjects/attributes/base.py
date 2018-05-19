@@ -66,15 +66,9 @@ class nSyncAttributeBase(object):
     def GetFormatString(self):
         raise dngExceptionNotImplemented("GetFormatString must be implemented in nSyncAttribute classes")
         
-    ## Generic encoding method.  It works fine for scalar values, but breaks down with anything
-    #  of sufficient complexity.
-    #
-    #  @todo: consider removing this from the base class and requiring subclasses to implement it.
+    ## Encode the data in this attribute.  Must be implemented by subclasses.
     def Encode(self):
-        fmt = self.GetFormatString()
-        
-        if fmt is not None:
-            return struct.pack("!" + fmt, self._id, self._value)
+        raise dngExceptionNotImplemented("Encode must be implemented in nSyncAttribute classes")
     
     ## Checks to see if this attribute has been changed since the last time it was synced.
     def IsDirty(self):
@@ -112,10 +106,23 @@ class nSyncAttributeBase(object):
         # The entire purpose of this if statement is to protect the name "_value" from being overridden.
         # It's not perfect, but a programmer would be dumb to bother changing it.
         if name == "_value":
-            return super().__getattribute__("_value")
+            self.GetAttribute("_value")
         else:
             return super().__getattribute__(name)
+    
+    ## Called to set the actual attribute.  This will only be called when it is the syncable
+    #  attribute, and it will never be called for regular python attributes.  Type-checking will
+    #  be done before this call, so all subclasses need to worry about is setting the attribute
+    #  correctly.  Default implementation should work for most cases.
+    def SetAttribute(self, name, value):
+        super().__setattr__(name, value)
         
+    ## Called to get the value of an attribute.  Most subclasses can ignore this.  Like
+    #  SetAttribute, it will only be called on syncable attributes.  All other attributes
+    #  are handled through python's normal mechanisms.
+    def GetAttribute(self, name):
+        return super().__getattribute__(name)
+    
     ## Overrides the default __setattr__ behavior to make sure we do the necessary housekeeping
     #  when the actual value of the attribute being synced is done.  Also, we type check that value
     #  and throw an exception to make sure nobody tries to give us a type that we can't later encode
@@ -125,7 +132,7 @@ class nSyncAttributeBase(object):
         if name == "_value":
             if isinstance(value, self._type):
                 super().__setattr__("_isdirty", True)
-                super().__setattr__("_value", value)
+                self.SetAttribute("_value", value)
             else:
                 raise exceptions.dngSyncAttributeTypeError
         else:
